@@ -1,0 +1,43 @@
+{
+  "$schema": "https://turborepo.com/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": [
+        "BETTER_AUTH_SECRET",
+        "BETTER_AUTH_URL",
+        "POLAR_ACCESS_TOKEN",
+        "POLAR_SUCCESS_URL",
+        "TURSO_DATABASE_URL",
+        "TURSO_AUTH_TOKEN",
+        "POLAR_PRODUCT_ID",
+        "POLAR_WEBHOOK_SECRET",
+        "TURSO_AUTH_TOKEN",
+        "TURSO_DATABASE_URL",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GITHUB_CLIENT_ID",
+        "GITHUB_CLIENT_SECRET",
+        "NEXT_PUBLIC_POSTHOG_KEY",
+        "NEXT_PUBLIC_POSTHOG_HOST",
+        "SOCKET_SECRET",
+        "REDIS_URL",
+        "ENABLE_EXPERIMENTAL_COREPACK",
+        "DATABASE_URL"
+      ]
+    },
+    "lint": {
+      "dependsOn": ["^lint"]
+    },
+    "check-types": {
+      "dependsOn": ["^check-types"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
