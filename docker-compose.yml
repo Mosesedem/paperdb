@@ -1,0 +1,130 @@
+# PaperDB Docker Compose
+# Run: docker-compose up
+
+services:
+  # ===================
+  # Infrastructure
+  # ===================
+  postgres:
+    image: postgres:16-alpine
+    container_name: paperdb-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: paperdb
+      POSTGRES_PASSWORD: paperdb_secret
+      POSTGRES_DB: paperdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: paperdb-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===================
+  # PaperDB Services
+  # ===================
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: paperdb-api
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: postgresql://paperdb:paperdb_secret@postgres:5432/paperdb
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-this-in-production-use-256-bit-key}
+      PORT: 3001
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3001/",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  cron-worker:
+    build:
+      context: .
+      dockerfile: apps/cron/Dockerfile
+    container_name: paperdb-cron
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://paperdb:paperdb_secret@postgres:5432/paperdb
+      REDIS_URL: redis://redis:6379
+      WEBHOOK_MAX_RETRIES: 5
+      WEBHOOK_TIMEOUT_MS: 30000
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  realtime:
+    build:
+      context: .
+      dockerfile: apps/realtime/Dockerfile
+    container_name: paperdb-realtime
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    environment:
+      REDIS_URL: redis://redis:6379
+      SOCKET_SECRET: ${SOCKET_SECRET:-change-this-socket-secret}
+      PORT: 3002
+      NODE_ENV: production
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: paperdb-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://paperdb:paperdb_secret@postgres:5432/paperdb
+      NEXT_PUBLIC_API_URL: http://api:3001
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-this-auth-secret}
+      NODE_ENV: production
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
