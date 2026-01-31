@@ -88,10 +88,7 @@ export default function DatabaseLayout({
       <Sidebar>
         <SidebarHeader className="flex flex-row">
           <Link href="/dashboard">
-            <img
-              src="https://api.iconify.design/solar:box-minimalistic-bold-duotone.svg?color=%23888888"
-              className="w-8"
-            />
+            <img src="/logo.png" className="w-8" />
           </Link>
           <Select value={dbId as string} onValueChange={handleDatabaseChange}>
             <SelectTrigger className="w-full border-none bg-transparent text-left font-semibold hover:bg-accent/50">

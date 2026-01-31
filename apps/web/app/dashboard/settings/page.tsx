@@ -135,10 +135,7 @@ export default function SettingsPage() {
       <SidebarProvider>
         <Sidebar>
           <SidebarHeader className="flex flex-row items-center">
-            <img
-              src="https://api.iconify.design/solar:box-minimalistic-bold-duotone.svg?color=%23888888"
-              className="w-8"
-            />
+            <img src="/logo.png" className="w-8" />
             <p className="text-lg font-semibold">PaperDB</p>
           </SidebarHeader>
           <SidebarContent className="p-2">

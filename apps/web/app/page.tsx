@@ -315,10 +315,7 @@ const db = createClient({
           <div className="flex justify-between">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <img
-                  src="https://api.iconify.design/solar:box-minimalistic-bold-duotone.svg?color=%23888888"
-                  className="w-6"
-                />
+                <img src="/logo.png" className="w-6" />
                 <p className="font-semibold text-white">PaperDB</p>
               </div>
               <p className="text-gray-400 text-sm">
@@ -326,7 +323,7 @@ const db = createClient({
                 applications.
               </p>
             </div>
-            {/* <div>
+            <div>
               <h3 className="text-white font-semibold mb-4">Product</h3>
               <ul className="space-y-2 text-sm">
                 <li>
@@ -408,7 +405,7 @@ const db = createClient({
                   </Link>
                 </li>
               </ul>
-            </div> */}
+            </div>
             <div className="flex items-center gap-x-2">
               <Link
                 href="https://github.com/mosesedem/paperdb"
