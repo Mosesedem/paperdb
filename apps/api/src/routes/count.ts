@@ -9,6 +9,8 @@ type Variables = {
 
 export const countRoutes = new Hono<{ Variables: Variables }>();
 
+const SAFE_FIELD_NAME = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
 // Middleware to extract dbId and collection
 countRoutes.use("*", async (c, next) => {
   const authHeader = c.req.header("authorization");
@@ -31,70 +33,107 @@ countRoutes.get("/", async (c) => {
   const collection = c.get("collection");
 
   try {
-    const filter = c.req.query("filter");
+    const query = c.req.query();
+    const filterJson = query.filter;
 
-    let count: number;
-
-    if (filter) {
-      // Parse the filter and count matching documents
-      const parsed = JSON.parse(filter) as Record<string, unknown>;
-
-      // Get all documents and filter in memory
-      // For simple equality filters, we can filter in SQL if indexed
-      const rows = await sql`
-        SELECT data FROM kv_store WHERE db_id = ${dbId} AND collection = ${collection}
-      `;
-
-      const matchingDocs = rows.filter((row) => {
-        const data = JSON.parse(row.data as string) as Record<string, unknown>;
-        return Object.entries(parsed).every(([key, value]) => {
-          if (typeof value === "object" && value !== null) {
-            // Handle operators like $gt, $lt, $gte, $lte
-            const ops = value as Record<string, unknown>;
-            const fieldValue = data[key];
-
-            if (
-              ops.$gt !== undefined &&
-              !(Number(fieldValue) > Number(ops.$gt))
-            )
-              return false;
-            if (
-              ops.$lt !== undefined &&
-              !(Number(fieldValue) < Number(ops.$lt))
-            )
-              return false;
-            if (
-              ops.$gte !== undefined &&
-              !(Number(fieldValue) >= Number(ops.$gte))
-            )
-              return false;
-            if (
-              ops.$lte !== undefined &&
-              !(Number(fieldValue) <= Number(ops.$lte))
-            )
-              return false;
-            if (ops.$ne !== undefined && fieldValue === ops.$ne) return false;
-            if (ops.$in !== undefined && !Array.isArray(ops.$in)) return false;
-            if (
-              ops.$in !== undefined &&
-              !(ops.$in as unknown[]).includes(fieldValue)
-            )
-              return false;
-
-            return true;
-          }
-          return data[key] === value;
-        });
-      });
-
-      count = matchingDocs.length;
-    } else {
-      // Simple count without filter
-      const result = await sql`
-        SELECT COUNT(*) as count FROM kv_store WHERE db_id = ${dbId} AND collection = ${collection}
-      `;
-      count = Number(result[0].count);
+    const typeHints: Record<string, string> = {};
+    for (const [key, value] of Object.entries(query)) {
+      const match = key.match(/^type\[([^\]]+)\]$/);
+      if (match) {
+        typeHints[match[1]] = value;
+      }
     }
+
+    const filters: { field: string; op: string; value: unknown }[] = [];
+
+    // Legacy JSON filter format: ?filter={"status":"active"}
+    if (filterJson) {
+      const parsed = JSON.parse(filterJson) as Record<string, unknown>;
+      for (const [field, value] of Object.entries(parsed)) {
+        if (value && typeof value === "object" && !Array.isArray(value)) {
+          const ops = value as Record<string, unknown>;
+          for (const [op, opValue] of Object.entries(ops)) {
+            const normalizedOp = op.startsWith("$") ? op.slice(1) : op;
+            filters.push({ field, op: normalizedOp, value: opValue });
+          }
+        } else {
+          filters.push({ field, op: "eq", value });
+        }
+      }
+    }
+
+    // SDK filter format: ?filter[field]=value or ?filter[field][gt]=1
+    for (const [key, value] of Object.entries(query)) {
+      if (!key.startsWith("filter[")) continue;
+
+      const match = key.match(/^filter\[([^\]]+)\](?:\[([^\]]+)\])?$/);
+      if (!match) continue;
+
+      const field = match[1];
+      const op = match[2] || "eq";
+      const declaredType = typeHints[field];
+
+      let parsedValue: unknown = value;
+      if (declaredType === "boolean") {
+        parsedValue = value === "true";
+      } else if (declaredType === "number") {
+        parsedValue = Number(value);
+      } else if (value === "true") {
+        parsedValue = true;
+      } else if (value === "false") {
+        parsedValue = false;
+      }
+
+      filters.push({ field, op, value: parsedValue });
+    }
+
+    let baseQuery =
+      "SELECT COUNT(*)::int as count FROM kv_store WHERE db_id = $1 AND collection = $2";
+    const args: unknown[] = [dbId, collection];
+    let paramIndex = 3;
+
+    for (const { field, op, value } of filters) {
+      if (!SAFE_FIELD_NAME.test(field)) {
+        continue;
+      }
+
+      if (op === "in") {
+        if (!Array.isArray(value)) {
+          continue;
+        }
+
+        baseQuery += ` AND value->>'${field}' = ANY($${paramIndex})`;
+        args.push(value.map((entry) => String(entry)));
+        paramIndex++;
+        continue;
+      }
+
+      let sqlOp = "=";
+      if (op === "gt") sqlOp = ">";
+      else if (op === "lt") sqlOp = "<";
+      else if (op === "gte") sqlOp = ">=";
+      else if (op === "lte") sqlOp = "<=";
+      else if (op === "ne") sqlOp = "!=";
+
+      if (
+        (op === "gt" || op === "lt" || op === "gte" || op === "lte") &&
+        typeof value === "number"
+      ) {
+        baseQuery += ` AND (value->>'${field}')::numeric ${sqlOp} $${paramIndex}`;
+        args.push(value);
+      } else if ((op === "eq" || op === "ne") && typeof value === "boolean") {
+        baseQuery += ` AND (value->>'${field}')::boolean ${sqlOp} $${paramIndex}`;
+        args.push(value);
+      } else {
+        baseQuery += ` AND value->>'${field}' ${sqlOp} $${paramIndex}`;
+        args.push(String(value));
+      }
+
+      paramIndex++;
+    }
+
+    const result = await sql.unsafe(baseQuery, args as any[]);
+    const count = Number(result[0]?.count || 0);
 
     return c.json({ count });
   } catch (error) {

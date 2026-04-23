@@ -7,6 +7,7 @@ import { nanoid } from "nanoid";
 import { getPool } from "../lib/db.js";
 import { authenticateApiKey, DbContext } from "../lib/auth.js";
 import { getRedis } from "../lib/redis.js";
+import { getCronQueue } from "../lib/queues.js";
 
 type Variables = {
   dbContext: DbContext;
@@ -501,17 +502,22 @@ cronRoutes.post("/:id/trigger", async (c) => {
     [runId, id, "running", now],
   );
 
-  // Queue for execution via Redis
-  const redis = getRedis();
-  await redis.lpush(
-    "paperdb:cron:queue",
-    JSON.stringify({
+  // Queue for execution via BullMQ
+  const cronQueue = getCronQueue();
+  await cronQueue.add(
+    "execute",
+    {
       runId,
       cronJobId: id,
       dbId,
       action: job.action,
       triggeredManually: true,
-    }),
+    },
+    {
+      jobId: runId,
+      removeOnComplete: true,
+      removeOnFail: 10,
+    },
   );
 
   return c.json({

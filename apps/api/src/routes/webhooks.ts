@@ -7,7 +7,7 @@ import { nanoid } from "nanoid";
 import { createHmac, randomBytes } from "crypto";
 import { getPool } from "../lib/db.js";
 import { authenticateApiKey, DbContext } from "../lib/auth.js";
-import { getRedis } from "../lib/redis.js";
+import { getWebhookQueue } from "../lib/queues.js";
 
 type Variables = {
   dbContext: DbContext;
@@ -378,11 +378,11 @@ webhookRoutes.post("/:id/deliveries/:deliveryId/retry", async (c) => {
   const webhook = webhookResult.rows[0];
   const delivery = deliveryResult.rows[0];
 
-  // Queue for retry via Redis
-  const redis = getRedis();
-  await redis.lpush(
-    "paperdb:webhook:queue",
-    JSON.stringify({
+  // Queue for retry via BullMQ
+  const webhookQueue = getWebhookQueue();
+  await webhookQueue.add(
+    "delivery",
+    {
       deliveryId: delivery.id,
       webhookId: webhook.id,
       url: webhook.url,
@@ -390,7 +390,12 @@ webhookRoutes.post("/:id/deliveries/:deliveryId/retry", async (c) => {
       secret: webhook.secret,
       headers: webhook.headers,
       isRetry: true,
-    }),
+    },
+    {
+      jobId: `${delivery.id}-${Date.now()}`,
+      removeOnComplete: true,
+      removeOnFail: 10,
+    },
   );
 
   // Update delivery status

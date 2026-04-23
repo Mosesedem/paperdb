@@ -9,6 +9,38 @@ dotenv.config();
 const server = createServer();
 const wss = new WebSocketServer({ server });
 const redis = new Redis(process.env.REDIS_URL);
+const JWT_SECRET = process.env.SOCKET_SECRET || process.env.JWT_SECRET;
+
+function normalizeCollections(decoded) {
+  if (Array.isArray(decoded.collections)) {
+    return decoded.collections
+      .map((value) => (typeof value === "string" ? value.trim() : ""))
+      .filter(Boolean);
+  }
+
+  if (typeof decoded.collection === "string" && decoded.collection.trim()) {
+    return [decoded.collection.trim()];
+  }
+
+  return [];
+}
+
+function normalizeChannelName(dbId, channel) {
+  if (typeof channel !== "string") return null;
+
+  const trimmed = channel.trim();
+  if (!trimmed) return null;
+
+  if (trimmed.startsWith(`paperdb:${dbId}:`)) {
+    return trimmed;
+  }
+
+  if (trimmed.includes(":")) {
+    return null;
+  }
+
+  return `paperdb:${dbId}:${trimmed}`;
+}
 
 /** @type {Map<import('ws'), string[]>} */
 const clients = new Map();
@@ -24,7 +56,12 @@ wss.on("connection", (ws, req) => {
 
   let decoded;
   try {
-    decoded = jwt.verify(token, process.env.SOCKET_SECRET);
+    if (!JWT_SECRET) {
+      ws.close(1011, "Server not configured");
+      return;
+    }
+
+    decoded = jwt.verify(token, JWT_SECRET);
   } catch (err) {
     ws.close(1008, "Invalid token");
     return;
@@ -32,9 +69,10 @@ wss.on("connection", (ws, req) => {
 
   console.log("🔑 Token decoded:", decoded);
 
-  const { dbId, collections } = decoded;
+  const { dbId } = decoded;
+  const collections = [...new Set(normalizeCollections(decoded))];
 
-  if (!dbId || !collections || !Array.isArray(collections)) {
+  if (!dbId || !Array.isArray(collections) || collections.length === 0) {
     ws.close(1008, "Invalid token payload");
     return;
   }
@@ -58,21 +96,29 @@ wss.on("connection", (ws, req) => {
   ws.on("message", (msg) => {
     try {
       const data = JSON.parse(msg.toString());
-      if (data.action === "subscribe" && Array.isArray(data.channels)) {
+      const wantsSubscribe =
+        data.action === "subscribe" || data.type === "subscribe";
+      const requestedChannels = Array.isArray(data.channels)
+        ? data.channels
+        : Array.isArray(data.collections)
+          ? data.collections
+          : [];
+
+      if (wantsSubscribe && requestedChannels.length > 0) {
         const current = clients.get(ws) || [];
 
-        const allowed = data.channels.filter((ch) => {
-          if (typeof ch !== "string" || !ch.startsWith(`paperdb:${dbId}:`)) {
-            return false;
-          }
+        const allowed = requestedChannels
+          .map((ch) => normalizeChannelName(dbId, ch))
+          .filter(Boolean)
+          .filter((ch) => {
+            if (collections.includes("*")) {
+              return true;
+            }
 
-          if (collections.includes("*")) {
-            return true;
-          }
-
-          const [, , collection] = ch.split(":");
-          return collections.includes(collection);
-        });
+            const parts = ch.split(":");
+            const collection = parts[2];
+            return collections.includes(collection);
+          });
 
         clients.set(ws, [...new Set([...current, ...allowed])]);
       }

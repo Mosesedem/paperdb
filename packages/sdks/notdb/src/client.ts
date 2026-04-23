@@ -28,14 +28,47 @@ export interface ExtendedClientOptions {
   publicKey?: string;
   schema?: SchemaDefinition;
   baseUrl?: string;
+  realtimeUrl?: string;
   sync?: SyncConfig;
 }
 
-function createRealtimeMethods(baseUrl: string, apiKey: string) {
+function resolveRealtimeBaseUrl(baseUrl: string, realtimeUrl?: string): string {
+  const source = realtimeUrl || baseUrl;
+
+  try {
+    const url = new URL(source);
+
+    // Local default: API on 3001, realtime on 3002.
+    if (!realtimeUrl && url.hostname === "localhost" && url.port === "3001") {
+      url.port = "3002";
+    }
+
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.pathname = "/";
+    url.search = "";
+    url.hash = "";
+    return url.toString().replace(/\/$/, "");
+  } catch {
+    return source
+      .replace("https://", "wss://")
+      .replace("http://", "ws://")
+      .replace(/\/$/, "");
+  }
+}
+
+function createRealtimeMethods(
+  baseUrl: string,
+  apiKey: string,
+  realtimeUrl?: string,
+) {
+  const realtimeBaseUrl = resolveRealtimeBaseUrl(baseUrl, realtimeUrl);
+
   return {
     async generateToken(options?: {
       expiresIn?: string;
+      collection?: string;
       collections?: string[];
+      permissions?: string[];
     }): Promise<string> {
       const res = await fetch(`${baseUrl}/realtime/token`, {
         method: "POST",
@@ -64,22 +97,29 @@ function createRealtimeMethods(baseUrl: string, apiKey: string) {
       options?: { filter?: Record<string, unknown> },
     ): () => void {
       let ws: WebSocket | null = null;
-      let isConnected = false;
+      let shouldReconnect = true;
 
       const connect = async () => {
         try {
-          const token = await this.generateToken({ collections: [collection] });
-          const wsUrl = baseUrl
-            .replace("https://", "wss://")
-            .replace("http://", "ws://");
-          ws = new WebSocket(`${wsUrl}/realtime?token=${token}`);
+          const token = await this.generateToken({
+            collection,
+            collections: [collection],
+          });
+          const wsEndpoint = new URL(
+            "/realtime",
+            `${realtimeBaseUrl}/`,
+          ).toString();
+          ws = new WebSocket(
+            `${wsEndpoint}?token=${encodeURIComponent(token)}`,
+          );
 
           ws.onopen = () => {
-            isConnected = true;
             ws?.send(
               JSON.stringify({
+                action: "subscribe",
                 type: "subscribe",
                 channels: [`${collection}`],
+                collections: [collection],
               }),
             );
           };
@@ -96,9 +136,10 @@ function createRealtimeMethods(baseUrl: string, apiKey: string) {
           };
 
           ws.onclose = () => {
-            isConnected = false;
-            // Reconnect after delay
-            setTimeout(connect, 3000);
+            if (shouldReconnect) {
+              // Reconnect after delay
+              setTimeout(connect, 3000);
+            }
           };
 
           ws.onerror = () => {
@@ -106,7 +147,9 @@ function createRealtimeMethods(baseUrl: string, apiKey: string) {
           };
         } catch (error) {
           console.error("Realtime connection error:", error);
-          setTimeout(connect, 5000);
+          if (shouldReconnect) {
+            setTimeout(connect, 5000);
+          }
         }
       };
 
@@ -114,6 +157,7 @@ function createRealtimeMethods(baseUrl: string, apiKey: string) {
 
       // Return unsubscribe function
       return () => {
+        shouldReconnect = false;
         if (ws) {
           ws.close();
           ws = null;
@@ -160,7 +204,7 @@ export function createClient<S extends SchemaDefinition>(
   const cron = new CronClient(baseUrl, apiKey);
   const storage = new StorageClient(baseUrl, apiKey);
   const search = new SearchClient(baseUrl, apiKey);
-  const realtime = createRealtimeMethods(baseUrl, apiKey);
+  const realtime = createRealtimeMethods(baseUrl, apiKey, opts.realtimeUrl);
 
   // Initialize sync if configured
   let sync: SyncClient | null = null;

@@ -14,6 +14,8 @@ type Variables = {
 
 export const bulkRoutes = new Hono<{ Variables: Variables }>();
 
+const SAFE_FIELD_NAME = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
 // Middleware to extract dbId and collection
 bulkRoutes.use("*", async (c, next) => {
   const authHeader = c.req.header("authorization");
@@ -37,7 +39,9 @@ bulkRoutes.post("/", async (c) => {
 
   try {
     const body = await c.req.json();
-    const { documents } = body as { documents?: unknown[] };
+    const documents = Array.isArray(body)
+      ? body
+      : (body as { documents?: unknown[] }).documents;
 
     if (!Array.isArray(documents) || documents.length === 0) {
       return c.json({ error: "Invalid or empty documents array" }, 400);
@@ -50,10 +54,13 @@ bulkRoutes.post("/", async (c) => {
 
     let parsedSchema: SchemaDefinition | null = null;
     if (schemaResult.length > 0 && schemaResult[0].schema) {
-      parsedSchema = JSON.parse(schemaResult[0].schema as string);
+      parsedSchema =
+        typeof schemaResult[0].schema === "string"
+          ? JSON.parse(schemaResult[0].schema as string)
+          : (schemaResult[0].schema as SchemaDefinition);
     }
 
-    const insertedDocs: { id: string; data: unknown }[] = [];
+    const insertedDocs: Record<string, unknown>[] = [];
     const errors: { index: number; error: string }[] = [];
 
     for (let i = 0; i < documents.length; i++) {
@@ -63,10 +70,13 @@ bulkRoutes.post("/", async (c) => {
         continue;
       }
 
+      const rawDoc = doc as Record<string, unknown>;
+      const { unique, key: providedKey, ...docData } = rawDoc;
+
       // Validate against schema
       if (parsedSchema) {
         const validation = validateAgainstSchema(
-          doc as Record<string, unknown>,
+          docData as Record<string, unknown>,
           parsedSchema,
         );
         if (!validation.valid) {
@@ -78,15 +88,59 @@ bulkRoutes.post("/", async (c) => {
         }
       }
 
-      const id = nanoid();
-      const dataJson = JSON.stringify(doc);
+      if (Array.isArray(unique)) {
+        for (const field of unique) {
+          if (typeof field !== "string" || !SAFE_FIELD_NAME.test(field)) {
+            errors.push({
+              index: i,
+              error: `Invalid unique field: ${String(field)}`,
+            });
+            continue;
+          }
+
+          const value = (docData as Record<string, unknown>)[field];
+          if (typeof value === "undefined") continue;
+
+          const existingRows = await sql.unsafe(
+            `SELECT id FROM kv_store
+             WHERE db_id = $1 AND collection = $2
+             AND value->>'${field}' = $3
+             LIMIT 1`,
+            [dbId, collection, String(value)],
+          );
+
+          if (existingRows.length > 0) {
+            errors.push({
+              index: i,
+              error: `Unique field violation — '${field}' already exists in this collection.`,
+            });
+          }
+        }
+
+        if (errors.some((entry) => entry.index === i)) {
+          continue;
+        }
+      }
+
+      const now = new Date().toISOString();
+      const id =
+        typeof providedKey === "string" && providedKey.trim().length > 0
+          ? providedKey.trim()
+          : nanoid();
+
+      const storedDoc = {
+        ...docData,
+        _id: id,
+        createdAt: now,
+        updatedAt: now,
+      };
 
       await sql`
-        INSERT INTO kv_store (id, db_id, collection, data)
-        VALUES (${id}, ${dbId}, ${collection}, ${dataJson})
+        INSERT INTO kv_store (id, db_id, collection, key, value, created_at, updated_at)
+        VALUES (${id}, ${dbId}, ${collection}, ${id}, ${JSON.stringify(storedDoc)}::jsonb, ${now}, ${now})
       `;
 
-      insertedDocs.push({ id, data: doc });
+      insertedDocs.push(storedDoc);
 
       // Log event
       await logDbEvent({ dbId, collection, action: "CREATE", docId: id });
@@ -96,11 +150,11 @@ bulkRoutes.post("/", async (c) => {
         dbId,
         collection,
         type: "insert",
-        doc: { id, data: doc },
+        doc: storedDoc,
       });
 
       // Create auto-index if needed (for each field in the document)
-      const docObj = doc as Record<string, unknown>;
+      const docObj = docData as Record<string, unknown>;
       for (const field of Object.keys(docObj)) {
         await createAutoIndexIfNeeded(dbId, collection, field);
       }

@@ -91,9 +91,9 @@ export async function GET() {
     `;
     const collectionCount = collectionCountResult[0]?.count || 0;
 
-    // Estimate storage (sum of data column sizes)
+    // Estimate storage (sum of document JSON sizes)
     const storageResult = await sql`
-      SELECT COALESCE(SUM(LENGTH(k.data::text)), 0)::bigint as bytes
+      SELECT COALESCE(SUM(LENGTH(k.value::text)), 0)::bigint as bytes
       FROM kv_store k
       JOIN databases d ON k.db_id = d.id
       WHERE d.user_id = ${userId}
