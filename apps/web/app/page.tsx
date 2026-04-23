@@ -4,7 +4,7 @@ import Link from "next/link";
 import Ttile from "@/components/ttile";
 import { SiGithub, SiX } from "react-icons/si";
 import { SiTypescript } from "react-icons/si";
-import Cube3D from "@/components/cube-3d";
+// import Cube3D from "@/components/cube-3d";
 import { useState, useEffect } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { dracula } from "react-syntax-highlighter/dist/esm/styles/prism";
@@ -137,7 +137,7 @@ const db = createClient({
             className="overflow-hidden"
             style={{ aspectRatio: "1 / 1", height: 500 }}
           >
-            <Cube3D />
+            {/* <Cube3D /> */}
           </div>
           <div className="absolute w-full h-full bg-black/80 rounded-2xl flex items-center justify-center flex-col">
             <h1 className="lg:text-7xl text-5xl font-semibold text-white text-center">

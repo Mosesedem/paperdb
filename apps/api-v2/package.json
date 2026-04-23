@@ -1,5 +1,5 @@
 {
-  "name": "@paperdb/api",
+  "name": "@paperdb/api-v2",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
