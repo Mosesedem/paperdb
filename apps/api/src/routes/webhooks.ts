@@ -8,6 +8,7 @@ import { createHmac, randomBytes } from "crypto";
 import { sql } from "../lib/db.js";
 import { authenticateApiKey, DbContext } from "../lib/auth.js";
 import { getWebhookQueue } from "../lib/queues.js";
+import { CreateWebhookSchema, validateBody } from "../lib/validate.js";
 
 type Variables = {
   dbContext: DbContext;
@@ -73,30 +74,11 @@ webhookRoutes.get("/", async (c) => {
  */
 webhookRoutes.post("/", async (c) => {
   const { dbId } = c.get("dbContext");
-  const body = await c.req.json();
-  const {
-    url,
-    events,
-    collections,
-    description,
-    enabled = true,
-    headers = {},
-  } = body;
 
-  if (!url) {
-    return c.json({ error: "URL is required" }, 400);
-  }
+  const { data, error } = await validateBody(c, CreateWebhookSchema);
+  if (error) return error;
 
-  if (!events || !Array.isArray(events) || events.length === 0) {
-    return c.json({ error: "At least one event is required" }, 400);
-  }
-
-  // Validate URL
-  try {
-    new URL(url);
-  } catch {
-    return c.json({ error: "Invalid URL" }, 400);
-  }
+  const { url, events, collections, description, enabled, headers } = data!;
 
   const id = nanoid();
   const secret = generateWebhookSecret();

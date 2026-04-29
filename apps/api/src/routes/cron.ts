@@ -8,6 +8,7 @@ import { sql } from "../lib/db.js";
 import { authenticateApiKey, DbContext } from "../lib/auth.js";
 import { getRedis } from "../lib/redis.js";
 import { getCronQueue } from "../lib/queues.js";
+import { CreateCronSchema, validateBody } from "../lib/validate.js";
 
 type Variables = {
   dbContext: DbContext;
@@ -179,27 +180,11 @@ cronRoutes.get("/", async (c) => {
  */
 cronRoutes.post("/", async (c) => {
   const { dbId } = c.get("dbContext");
-  const body = await c.req.json();
-  const {
-    name,
-    description,
-    schedule,
-    timezone = "UTC",
-    action,
-    enabled = true,
-  } = body;
 
-  if (!name) {
-    return c.json({ error: "Name is required" }, 400);
-  }
+  const { data, error } = await validateBody(c, CreateCronSchema);
+  if (error) return error;
 
-  if (!schedule) {
-    return c.json({ error: "Schedule is required" }, 400);
-  }
-
-  if (!action) {
-    return c.json({ error: "Action is required" }, 400);
-  }
+  const { name, description, schedule, timezone, action, enabled } = data!;
 
   // Parse schedule
   const cronExpression = parseSchedule(schedule);
@@ -207,17 +192,6 @@ cronRoutes.post("/", async (c) => {
     return c.json(
       {
         error: `Invalid schedule: "${schedule}". Use formats like "every 5 minutes", "daily at 9am", or a cron expression.`,
-      },
-      400,
-    );
-  }
-
-  // Validate action
-  if (!["http", "collection", "function"].includes(action.type)) {
-    return c.json(
-      {
-        error:
-          "Invalid action type. Must be 'http', 'collection', or 'function'.",
       },
       400,
     );

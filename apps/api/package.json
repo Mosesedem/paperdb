@@ -6,11 +6,12 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsup src/index.ts --format esm --clean",
     "start": "node dist/index.js",
-    "migrate": "tsx scripts/migrate-from-turso.ts"
+    "migrate": "tsx src/lib/migrate.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hono/node-server": "^1.19.6",
-    "@libsql/client": "^0.14.0",
     "bcrypt": "^5.1.1",
     "bullmq": "^5.21.1",
     "dotenv": "^17.2.3",
@@ -18,16 +19,16 @@
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "nanoid": "^5.0.9",
-    "pg": "^8.13.0",
-    "postgres": "^3.4.5"
+    "postgres": "^3.4.5",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20.11.17",
-    "@types/pg": "^8.11.10",
     "tsup": "^8.0.0",
     "tsx": "^4.7.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^1.6.0"
   }
 }
