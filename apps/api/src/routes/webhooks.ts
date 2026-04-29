@@ -86,7 +86,7 @@ webhookRoutes.post("/", async (c) => {
 
   await sql`
     INSERT INTO webhooks (id, database_id, url, events, collections, secret, enabled, description, headers, created_at, updated_at)
-    VALUES (${id}, ${dbId}, ${url}, ${events}, ${collections || null}, ${secret}, ${enabled}, ${description || null}, ${JSON.stringify(headers)}::jsonb, ${now}, ${now})
+    VALUES (${id}, ${dbId}, ${url}, ${events}, ${collections ?? null}, ${secret}, ${enabled ?? true}, ${description ?? null}, ${JSON.stringify(headers ?? {})}::jsonb, ${now}, ${now})
   `;
 
   return c.json(

@@ -5,7 +5,7 @@ import { getDbIdFromApiKey } from "../lib/auth";
 // Middleware to check API quota before processing requests
 export const quotaMiddleware = createMiddleware(async (c, next) => {
   const authHeader = c.req.header("Authorization");
-  const dbId = await getDbIdFromApiKey(authHeader);
+  const dbId = await getDbIdFromApiKey(authHeader ?? null);
 
   if (!dbId) {
     // Auth will be handled by the route, skip quota check
@@ -65,7 +65,7 @@ export const documentQuotaMiddleware = createMiddleware(async (c, next) => {
 // Middleware for realtime routes
 export const realtimeQuotaMiddleware = createMiddleware(async (c, next) => {
   const authHeader = c.req.header("Authorization");
-  const dbId = await getDbIdFromApiKey(authHeader);
+  const dbId = await getDbIdFromApiKey(authHeader ?? null);
 
   if (!dbId) {
     return next();

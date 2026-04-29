@@ -205,7 +205,7 @@ cronRoutes.post("/", async (c) => {
 
   await sql`
     INSERT INTO cron_jobs (id, database_id, name, description, schedule, cron_expression, timezone, action, enabled, next_run_at, created_at, updated_at)
-    VALUES (${id}, ${dbId}, ${name}, ${description || null}, ${schedule}, ${cronExpression}, ${timezone}, ${JSON.stringify(action)}::jsonb, ${enabled}, ${nextRunAt}, ${now}, ${now})
+    VALUES (${id}, ${dbId}, ${name}, ${description ?? null}, ${schedule}, ${cronExpression}, ${timezone ?? "UTC"}, ${JSON.stringify(action)}::jsonb, ${enabled ?? true}, ${nextRunAt}, ${now}, ${now})
   `;
 
   // Register with cron worker via Redis
