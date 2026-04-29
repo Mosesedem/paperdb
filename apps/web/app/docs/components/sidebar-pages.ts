@@ -10,6 +10,11 @@ import {
   PackagePlus,
   Play,
   Trash,
+  Webhook,
+  Activity,
+  Clock,
+  HardDrive,
+  Code2
 } from "lucide-react";
 
 export const pages = [
@@ -47,6 +52,21 @@ export const pages = [
       { name: "Update", href: "/docs/update", icon: FileBox },
       { name: "Delete", href: "/docs/delete", icon: Trash },
       { name: "Aggregation", href: "/docs/aggregation", icon: Group },
+    ],
+  },
+  {
+    group: "Advanced Features",
+    items: [
+      { name: "Webhooks", href: "/docs/webhooks", icon: Webhook },
+      { name: "Realtime", href: "/docs/realtime", icon: Activity },
+      { name: "Cron Jobs", href: "/docs/cron", icon: Clock },
+      { name: "Storage", href: "/docs/storage", icon: HardDrive },
+    ],
+  },
+  {
+    group: "Reference",
+    items: [
+      { name: "REST API", href: "/docs/api-reference", icon: Code2 },
     ],
   },
 ];

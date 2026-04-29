@@ -41,6 +41,21 @@ const sections = [
       { name: "Aggregation", href: "/docs/aggregation" },
     ],
   },
+  {
+    group: "Advanced Features",
+    items: [
+      { name: "Webhooks", href: "/docs/webhooks" },
+      { name: "Realtime", href: "/docs/realtime" },
+      { name: "Cron Jobs", href: "/docs/cron" },
+      { name: "Storage", href: "/docs/storage" },
+    ],
+  },
+  {
+    group: "Reference",
+    items: [
+      { name: "REST API Reference", href: "/docs/api-reference" },
+    ],
+  },
 ];
 
 const Docs = () => {
