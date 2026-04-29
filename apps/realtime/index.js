@@ -6,10 +6,18 @@ const jwt = require("jsonwebtoken");
 
 dotenv.config();
 
+const JWT_SECRET = process.env.SOCKET_SECRET || process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.error(
+    "[realtime] FATAL: SOCKET_SECRET (or JWT_SECRET) is not set. Set SOCKET_SECRET to sign realtime tokens."
+  );
+  process.exit(1);
+}
+
 const server = createServer();
 const wss = new WebSocketServer({ server });
-const redis = new Redis(process.env.REDIS_URL);
-const JWT_SECRET = process.env.SOCKET_SECRET || process.env.JWT_SECRET;
+const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
 
 function normalizeCollections(decoded) {
   if (Array.isArray(decoded.collections)) {

@@ -17,15 +17,47 @@ import {
   realtimeQuotaMiddleware,
 } from "./middleware/quota.js";
 
+// Validate critical secrets at startup
+if (!process.env.JWT_SECRET) {
+  throw new Error(
+    "JWT_SECRET environment variable must be set. Refusing to start without a secure secret."
+  );
+}
+
 const app = new Hono();
 
 // Middleware
 app.use("*", logger());
-app.use("*", cors());
+
+// CORS — restrict to configured origins in production.
+// Set CORS_ORIGINS as a comma-separated list of allowed origins.
+// Leave empty or unset in development to allow all origins.
+const allowedOrigins = (process.env.CORS_ORIGINS ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(
+  "*",
+  cors({
+    origin: allowedOrigins.length
+      ? (origin) => (allowedOrigins.includes(origin) ? origin : null)
+      : "*",
+    allowHeaders: ["Authorization", "Content-Type", "X-API-Key"],
+    allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    exposeHeaders: ["X-PaperDB-Version"],
+  })
+);
+
+// Add version header to all responses
+app.use("*", async (c, next) => {
+  await next();
+  c.header("X-PaperDB-Version", "1");
+});
 
 // Health check
-app.get("/", (c) => {
-  return c.json({ status: "ok", message: "PaperDB API", version: "2.0.0" });
+app.get("/", async (c) => {
+  return c.json({ status: "ok", message: "PaperDB API", version: "1.0.0" });
 });
 
 // Platform routes (auth, webhooks, cron, storage)

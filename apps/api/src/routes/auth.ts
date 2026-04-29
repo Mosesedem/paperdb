@@ -6,13 +6,12 @@ import { Hono } from "hono";
 import { nanoid } from "nanoid";
 import { sign, verify } from "jsonwebtoken";
 import { hash, compare } from "bcrypt";
-import { getPool } from "../lib/db.js";
+import { sql } from "../lib/db.js";
 import { authenticateApiKey } from "../lib/auth.js";
 
 export const authRoutes = new Hono();
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "paperdb-jwt-secret-change-in-production";
+const JWT_SECRET = process.env.JWT_SECRET as string; // Validated non-null at startup
 const SESSION_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // Helper to generate session token
@@ -63,15 +62,10 @@ authRoutes.post("/sign-up", async (c) => {
     return c.json({ error: "Password must be at least 8 characters" }, 400);
   }
 
-  const pool = getPool();
-
   // Check if user already exists
-  const existing = await pool.query(
-    "SELECT id FROM sdk_users WHERE database_id = $1 AND email = $2",
-    [dbContext.dbId, email.toLowerCase()],
-  );
+  const existing = await sql`SELECT id FROM sdk_users WHERE database_id = ${dbContext.dbId} AND email = ${email.toLowerCase()}`;
 
-  if (existing.rows.length > 0) {
+  if (existing.length > 0) {
     return c.json({ error: "User with this email already exists" }, 409);
   }
 
@@ -82,29 +76,20 @@ authRoutes.post("/sign-up", async (c) => {
   const userId = nanoid();
   const now = new Date().toISOString();
 
-  await pool.query(
-    `INSERT INTO sdk_users (id, database_id, email, password_hash, name, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $6)`,
-    [
-      userId,
-      dbContext.dbId,
-      email.toLowerCase(),
-      passwordHash,
-      name || null,
-      now,
-    ],
-  );
+  await sql`
+    INSERT INTO sdk_users (id, database_id, email, password_hash, name, created_at, updated_at)
+    VALUES (${userId}, ${dbContext.dbId}, ${email.toLowerCase()}, ${passwordHash}, ${name || null}, ${now}, ${now})
+  `;
 
   // Create session
   const sessionId = nanoid();
   const token = generateSessionToken(userId, dbContext.dbId);
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
 
-  await pool.query(
-    `INSERT INTO sdk_sessions (id, user_id, token, expires_at, created_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [sessionId, userId, token, expiresAt, now],
-  );
+  await sql`
+    INSERT INTO sdk_sessions (id, user_id, token, expires_at, created_at)
+    VALUES (${sessionId}, ${userId}, ${token}, ${expiresAt}, ${now})
+  `;
 
   return c.json({
     user: {
@@ -141,20 +126,17 @@ authRoutes.post("/sign-in", async (c) => {
     return c.json({ error: "Email and password are required" }, 400);
   }
 
-  const pool = getPool();
-
   // Find user
-  const result = await pool.query(
-    `SELECT id, email, password_hash, name, avatar, role, email_verified, created_at, updated_at
-     FROM sdk_users WHERE database_id = $1 AND email = $2`,
-    [dbContext.dbId, email.toLowerCase()],
-  );
+  const userRows = await sql`
+    SELECT id, email, password_hash, name, avatar, role, email_verified, created_at, updated_at
+    FROM sdk_users WHERE database_id = ${dbContext.dbId} AND email = ${email.toLowerCase()}
+  `;
 
-  if (result.rows.length === 0) {
+  if (userRows.length === 0) {
     return c.json({ error: "Invalid email or password" }, 401);
   }
 
-  const user = result.rows[0];
+  const user = userRows[0];
 
   // Verify password
   const isValid = await compare(password, user.password_hash);
@@ -168,11 +150,10 @@ authRoutes.post("/sign-in", async (c) => {
   const expiresAt = new Date(Date.now() + SESSION_DURATION_MS).toISOString();
   const now = new Date().toISOString();
 
-  await pool.query(
-    `INSERT INTO sdk_sessions (id, user_id, token, expires_at, created_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [sessionId, user.id, token, expiresAt, now],
-  );
+  await sql`
+    INSERT INTO sdk_sessions (id, user_id, token, expires_at, created_at)
+    VALUES (${sessionId}, ${user.id}, ${token}, ${expiresAt}, ${now})
+  `;
 
   return c.json({
     user: {
@@ -203,8 +184,7 @@ authRoutes.post("/sign-out", async (c) => {
   const token = authHeader?.replace("Bearer ", "");
 
   if (token) {
-    const pool = getPool();
-    await pool.query("DELETE FROM sdk_sessions WHERE token = $1", [token]);
+    await sql`DELETE FROM sdk_sessions WHERE token = ${token}`;
   }
 
   return c.json({ success: true });
@@ -227,31 +207,26 @@ authRoutes.get("/me", async (c) => {
     return c.json({ error: "Invalid session" }, 401);
   }
 
-  const pool = getPool();
-
   // Verify session exists and not expired
-  const sessionResult = await pool.query(
-    `SELECT s.id, s.expires_at FROM sdk_sessions s
-     WHERE s.token = $1 AND s.expires_at > NOW()`,
-    [token],
-  );
+  const sessionRows = await sql`
+    SELECT id, expires_at FROM sdk_sessions WHERE token = ${token} AND expires_at > NOW()
+  `;
 
-  if (sessionResult.rows.length === 0) {
+  if (sessionRows.length === 0) {
     return c.json({ error: "Session expired" }, 401);
   }
 
   // Get user
-  const userResult = await pool.query(
-    `SELECT id, email, name, avatar, role, email_verified, created_at, updated_at
-     FROM sdk_users WHERE id = $1`,
-    [decoded.userId],
-  );
+  const userRows = await sql`
+    SELECT id, email, name, avatar, role, email_verified, created_at, updated_at
+    FROM sdk_users WHERE id = ${decoded.userId}
+  `;
 
-  if (userResult.rows.length === 0) {
+  if (userRows.length === 0) {
     return c.json({ error: "User not found" }, 404);
   }
 
-  const user = userResult.rows[0];
+  const user = userRows[0];
 
   return c.json({
     user: {
@@ -284,19 +259,15 @@ authRoutes.get("/session", async (c) => {
     return c.json({ error: "Invalid session" }, 401);
   }
 
-  const pool = getPool();
+  const sessionRows = await sql`
+    SELECT id, user_id, expires_at, created_at FROM sdk_sessions WHERE token = ${token} AND expires_at > NOW()
+  `;
 
-  const result = await pool.query(
-    `SELECT id, user_id, expires_at, created_at
-     FROM sdk_sessions WHERE token = $1 AND expires_at > NOW()`,
-    [token],
-  );
-
-  if (result.rows.length === 0) {
+  if (sessionRows.length === 0) {
     return c.json({ error: "Session expired" }, 401);
   }
 
-  const session = result.rows[0];
+  const session = sessionRows[0];
 
   return c.json({
     session: {
@@ -325,32 +296,26 @@ authRoutes.post("/refresh", async (c) => {
     return c.json({ error: "Invalid session" }, 401);
   }
 
-  const pool = getPool();
-
   // Get current session
-  const sessionResult = await pool.query(
-    `SELECT s.id, s.user_id FROM sdk_sessions s WHERE s.token = $1`,
-    [token],
-  );
+  const sessionRows = await sql`SELECT id, user_id FROM sdk_sessions WHERE token = ${token}`;
 
-  if (sessionResult.rows.length === 0) {
+  if (sessionRows.length === 0) {
     return c.json({ error: "Session not found" }, 401);
   }
 
-  const oldSession = sessionResult.rows[0];
+  const oldSession = sessionRows[0];
 
   // Get user
-  const userResult = await pool.query(
-    `SELECT id, email, name, avatar, role, email_verified, created_at, updated_at
-     FROM sdk_users WHERE id = $1`,
-    [oldSession.user_id],
-  );
+  const userRows = await sql`
+    SELECT id, email, name, avatar, role, email_verified, created_at, updated_at
+    FROM sdk_users WHERE id = ${oldSession.user_id}
+  `;
 
-  if (userResult.rows.length === 0) {
+  if (userRows.length === 0) {
     return c.json({ error: "User not found" }, 404);
   }
 
-  const user = userResult.rows[0];
+  const user = userRows[0];
 
   // Create new session
   const newSessionId = nanoid();
@@ -359,12 +324,11 @@ authRoutes.post("/refresh", async (c) => {
   const now = new Date().toISOString();
 
   // Delete old session and create new one
-  await pool.query("DELETE FROM sdk_sessions WHERE id = $1", [oldSession.id]);
-  await pool.query(
-    `INSERT INTO sdk_sessions (id, user_id, token, expires_at, created_at)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [newSessionId, user.id, newToken, expiresAt, now],
-  );
+  await sql`DELETE FROM sdk_sessions WHERE id = ${oldSession.id}`;
+  await sql`
+    INSERT INTO sdk_sessions (id, user_id, token, expires_at, created_at)
+    VALUES (${newSessionId}, ${user.id}, ${newToken}, ${expiresAt}, ${now})
+  `;
 
   return c.json({
     user: {
@@ -406,20 +370,17 @@ authRoutes.patch("/me", async (c) => {
   const body = await c.req.json();
   const { name, avatar } = body;
 
-  const pool = getPool();
+  const userRows = await sql`
+    UPDATE sdk_users SET name = COALESCE(${name ?? null}, name), avatar = COALESCE(${avatar ?? null}, avatar), updated_at = NOW()
+    WHERE id = ${decoded.userId}
+    RETURNING id, email, name, avatar, role, email_verified, created_at, updated_at
+  `;
 
-  const result = await pool.query(
-    `UPDATE sdk_users SET name = COALESCE($1, name), avatar = COALESCE($2, avatar), updated_at = NOW()
-     WHERE id = $3
-     RETURNING id, email, name, avatar, role, email_verified, created_at, updated_at`,
-    [name, avatar, decoded.userId],
-  );
-
-  if (result.rows.length === 0) {
+  if (userRows.length === 0) {
     return c.json({ error: "User not found" }, 404);
   }
 
-  const user = result.rows[0];
+  const user = userRows[0];
 
   return c.json({
     user: {
@@ -463,30 +424,22 @@ authRoutes.post("/change-password", async (c) => {
     return c.json({ error: "New password must be at least 8 characters" }, 400);
   }
 
-  const pool = getPool();
-
   // Get current password hash
-  const result = await pool.query(
-    "SELECT password_hash FROM sdk_users WHERE id = $1",
-    [decoded.userId],
-  );
+  const userRows = await sql`SELECT password_hash FROM sdk_users WHERE id = ${decoded.userId}`;
 
-  if (result.rows.length === 0) {
+  if (userRows.length === 0) {
     return c.json({ error: "User not found" }, 404);
   }
 
   // Verify current password
-  const isValid = await compare(currentPassword, result.rows[0].password_hash);
+  const isValid = await compare(currentPassword, userRows[0].password_hash);
   if (!isValid) {
     return c.json({ error: "Current password is incorrect" }, 401);
   }
 
   // Update password
   const newPasswordHash = await hash(newPassword, 12);
-  await pool.query(
-    "UPDATE sdk_users SET password_hash = $1, updated_at = NOW() WHERE id = $2",
-    [newPasswordHash, decoded.userId],
-  );
+  await sql`UPDATE sdk_users SET password_hash = ${newPasswordHash}, updated_at = NOW() WHERE id = ${decoded.userId}`;
 
   return c.json({ success: true });
 });

@@ -72,8 +72,10 @@ realtimeRoutes.post("/token", async (c) => {
 
     const jwtSecret = process.env.SOCKET_SECRET || process.env.JWT_SECRET;
     if (!jwtSecret) {
-      console.error("SOCKET_SECRET/JWT_SECRET not configured");
-      return c.json({ error: "Server configuration error" }, 500);
+      console.error(
+        "SOCKET_SECRET (or JWT_SECRET) is not configured. Set SOCKET_SECRET for realtime token signing."
+      );
+      return c.json({ error: "Server configuration error: realtime secret not set" }, 500);
     }
 
     // Create JWT token with database, collections, and permissions

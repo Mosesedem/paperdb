@@ -4,7 +4,7 @@
  */
 import { Hono, Context } from "hono";
 import { nanoid } from "nanoid";
-import { getPool } from "../lib/db.js";
+import { sql } from "../lib/db.js";
 import { authenticateApiKey, DbContext } from "../lib/auth.js";
 import { getRedis } from "../lib/redis.js";
 import { getCronQueue } from "../lib/queues.js";
@@ -155,30 +155,20 @@ cronRoutes.use("*", async (c, next) => {
  */
 cronRoutes.get("/", async (c) => {
   const { dbId } = c.get("dbContext");
-  const pool = getPool();
 
-  const result = await pool.query(
-    `SELECT id, name, description, schedule, cron_expression, timezone, action, enabled,
-            last_run_at, last_run_status, next_run_at, created_at, updated_at
-     FROM cron_jobs WHERE database_id = $1 ORDER BY created_at DESC`,
-    [dbId],
-  );
+  const rows = await sql`
+    SELECT id, name, description, schedule, cron_expression, timezone, action, enabled,
+           last_run_at, last_run_status, next_run_at, created_at, updated_at
+    FROM cron_jobs WHERE database_id = ${dbId} ORDER BY created_at DESC
+  `;
 
   return c.json(
-    result.rows.map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      schedule: row.schedule,
-      cronExpression: row.cron_expression,
-      timezone: row.timezone,
-      action: row.action,
-      enabled: row.enabled,
-      lastRunAt: row.last_run_at,
-      lastRunStatus: row.last_run_status,
-      nextRunAt: row.next_run_at,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+    rows.map((row: any) => ({
+      id: row.id, name: row.name, description: row.description,
+      schedule: row.schedule, cronExpression: row.cron_expression,
+      timezone: row.timezone, action: row.action, enabled: row.enabled,
+      lastRunAt: row.last_run_at, lastRunStatus: row.last_run_status,
+      nextRunAt: row.next_run_at, createdAt: row.created_at, updatedAt: row.updated_at,
     })),
   );
 });
@@ -233,30 +223,16 @@ cronRoutes.post("/", async (c) => {
     );
   }
 
-  const pool = getPool();
   const id = nanoid();
   const now = new Date().toISOString();
   const nextRunAt = enabled
     ? getNextRunTime(cronExpression, timezone).toISOString()
     : null;
 
-  await pool.query(
-    `INSERT INTO cron_jobs (id, database_id, name, description, schedule, cron_expression, timezone, action, enabled, next_run_at, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)`,
-    [
-      id,
-      dbId,
-      name,
-      description || null,
-      schedule,
-      cronExpression,
-      timezone,
-      JSON.stringify(action),
-      enabled,
-      nextRunAt,
-      now,
-    ],
-  );
+  await sql`
+    INSERT INTO cron_jobs (id, database_id, name, description, schedule, cron_expression, timezone, action, enabled, next_run_at, created_at, updated_at)
+    VALUES (${id}, ${dbId}, ${name}, ${description || null}, ${schedule}, ${cronExpression}, ${timezone}, ${JSON.stringify(action)}::jsonb, ${enabled}, ${nextRunAt}, ${now}, ${now})
+  `;
 
   // Register with cron worker via Redis
   if (enabled) {
@@ -300,34 +276,24 @@ cronRoutes.post("/", async (c) => {
 cronRoutes.get("/:id", async (c) => {
   const { dbId } = c.get("dbContext");
   const id = c.req.param("id");
-  const pool = getPool();
 
-  const result = await pool.query(
-    `SELECT id, name, description, schedule, cron_expression, timezone, action, enabled,
-            last_run_at, last_run_status, next_run_at, created_at, updated_at
-     FROM cron_jobs WHERE id = $1 AND database_id = $2`,
-    [id, dbId],
-  );
+  const rows = await sql`
+    SELECT id, name, description, schedule, cron_expression, timezone, action, enabled,
+           last_run_at, last_run_status, next_run_at, created_at, updated_at
+    FROM cron_jobs WHERE id = ${id} AND database_id = ${dbId}
+  `;
 
-  if (result.rows.length === 0) {
+  if (rows.length === 0) {
     return c.json({ error: "Cron job not found" }, 404);
   }
 
-  const job = result.rows[0];
+  const job = rows[0];
   return c.json({
-    id: job.id,
-    name: job.name,
-    description: job.description,
-    schedule: job.schedule,
-    cronExpression: job.cron_expression,
-    timezone: job.timezone,
-    action: job.action,
-    enabled: job.enabled,
-    lastRunAt: job.last_run_at,
-    lastRunStatus: job.last_run_status,
-    nextRunAt: job.next_run_at,
-    createdAt: job.created_at,
-    updatedAt: job.updated_at,
+    id: job.id, name: job.name, description: job.description,
+    schedule: job.schedule, cronExpression: job.cron_expression,
+    timezone: job.timezone, action: job.action, enabled: job.enabled,
+    lastRunAt: job.last_run_at, lastRunStatus: job.last_run_status,
+    nextRunAt: job.next_run_at, createdAt: job.created_at, updatedAt: job.updated_at,
   });
 });
 
@@ -340,8 +306,6 @@ cronRoutes.patch("/:id", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
   const { name, description, schedule, timezone, action, enabled } = body;
-
-  const pool = getPool();
 
   // Build dynamic update query
   const updates: string[] = [];
@@ -387,18 +351,18 @@ cronRoutes.patch("/:id", async (c) => {
   updates.push(`updated_at = NOW()`);
   values.push(id, dbId);
 
-  const result = await pool.query(
+  const rows = await sql.unsafe(
     `UPDATE cron_jobs SET ${updates.join(", ")}
      WHERE id = $${paramIndex++} AND database_id = $${paramIndex}
      RETURNING id, name, description, schedule, cron_expression, timezone, action, enabled, next_run_at, created_at, updated_at`,
     values,
   );
 
-  if (result.rows.length === 0) {
+  if (rows.length === 0) {
     return c.json({ error: "Cron job not found" }, 404);
   }
 
-  const job = result.rows[0];
+  const job = rows[0];
 
   // Update next run time if schedule or enabled changed
   if (newCronExpression || enabled !== undefined) {
@@ -406,10 +370,7 @@ cronRoutes.patch("/:id", async (c) => {
       ? getNextRunTime(job.cron_expression, job.timezone).toISOString()
       : null;
 
-    await pool.query("UPDATE cron_jobs SET next_run_at = $1 WHERE id = $2", [
-      nextRunAt,
-      id,
-    ]);
+    await sql`UPDATE cron_jobs SET next_run_at = ${nextRunAt} WHERE id = ${id}`;
     job.next_run_at = nextRunAt;
 
     // Update Redis
@@ -454,14 +415,10 @@ cronRoutes.patch("/:id", async (c) => {
 cronRoutes.delete("/:id", async (c) => {
   const { dbId } = c.get("dbContext");
   const id = c.req.param("id");
-  const pool = getPool();
 
-  const result = await pool.query(
-    "DELETE FROM cron_jobs WHERE id = $1 AND database_id = $2 RETURNING id",
-    [id, dbId],
-  );
+  const rows = await sql`DELETE FROM cron_jobs WHERE id = ${id} AND database_id = ${dbId} RETURNING id`;
 
-  if (result.rows.length === 0) {
+  if (rows.length === 0) {
     return c.json({ error: "Cron job not found" }, 404);
   }
 
@@ -479,28 +436,20 @@ cronRoutes.delete("/:id", async (c) => {
 cronRoutes.post("/:id/trigger", async (c) => {
   const { dbId } = c.get("dbContext");
   const id = c.req.param("id");
-  const pool = getPool();
 
-  const result = await pool.query(
-    "SELECT id, action FROM cron_jobs WHERE id = $1 AND database_id = $2",
-    [id, dbId],
-  );
+  const jobRows = await sql`SELECT id, action FROM cron_jobs WHERE id = ${id} AND database_id = ${dbId}`;
 
-  if (result.rows.length === 0) {
+  if (jobRows.length === 0) {
     return c.json({ error: "Cron job not found" }, 404);
   }
 
-  const job = result.rows[0];
+  const job = jobRows[0];
 
   // Create run record
   const runId = nanoid();
   const now = new Date().toISOString();
 
-  await pool.query(
-    `INSERT INTO cron_runs (id, cron_job_id, status, started_at)
-     VALUES ($1, $2, $3, $4)`,
-    [runId, id, "running", now],
-  );
+  await sql`INSERT INTO cron_runs (id, cron_job_id, status, started_at) VALUES (${runId}, ${id}, ${'running'}, ${now})`;
 
   // Queue for execution via BullMQ
   const cronQueue = getCronQueue();
@@ -537,36 +486,23 @@ cronRoutes.get("/:id/runs", async (c) => {
   const id = c.req.param("id");
   const limit = parseInt(c.req.query("limit") || "20", 10);
   const offset = parseInt(c.req.query("offset") || "0", 10);
-  const pool = getPool();
 
-  // Verify job belongs to this database
-  const jobCheck = await pool.query(
-    "SELECT id FROM cron_jobs WHERE id = $1 AND database_id = $2",
-    [id, dbId],
-  );
-
-  if (jobCheck.rows.length === 0) {
+  const jobCheck = await sql`SELECT id FROM cron_jobs WHERE id = ${id} AND database_id = ${dbId}`;
+  if (jobCheck.length === 0) {
     return c.json({ error: "Cron job not found" }, 404);
   }
 
-  const result = await pool.query(
-    `SELECT id, status, started_at, completed_at, duration_ms, result, error, logs
-     FROM cron_runs WHERE cron_job_id = $1
-     ORDER BY started_at DESC LIMIT $2 OFFSET $3`,
-    [id, limit, offset],
-  );
+  const rows = await sql`
+    SELECT id, status, started_at, completed_at, duration_ms, result, error, logs
+    FROM cron_runs WHERE cron_job_id = ${id}
+    ORDER BY started_at DESC LIMIT ${limit} OFFSET ${offset}
+  `;
 
   return c.json(
-    result.rows.map((row: any) => ({
-      id: row.id,
-      cronJobId: id,
-      status: row.status,
-      startedAt: row.started_at,
-      completedAt: row.completed_at,
-      duration: row.duration_ms,
-      result: row.result,
-      error: row.error,
-      logs: row.logs,
+    rows.map((row: any) => ({
+      id: row.id, cronJobId: id, status: row.status,
+      startedAt: row.started_at, completedAt: row.completed_at,
+      duration: row.duration_ms, result: row.result, error: row.error, logs: row.logs,
     })),
   );
 });
@@ -579,38 +515,25 @@ cronRoutes.get("/:id/runs/:runId", async (c) => {
   const { dbId } = c.get("dbContext");
   const id = c.req.param("id");
   const runId = c.req.param("runId");
-  const pool = getPool();
 
-  // Verify job belongs to this database
-  const jobCheck = await pool.query(
-    "SELECT id FROM cron_jobs WHERE id = $1 AND database_id = $2",
-    [id, dbId],
-  );
-
-  if (jobCheck.rows.length === 0) {
+  const jobCheck = await sql`SELECT id FROM cron_jobs WHERE id = ${id} AND database_id = ${dbId}`;
+  if (jobCheck.length === 0) {
     return c.json({ error: "Cron job not found" }, 404);
   }
 
-  const result = await pool.query(
-    `SELECT id, status, started_at, completed_at, duration_ms, result, error, logs
-     FROM cron_runs WHERE id = $1 AND cron_job_id = $2`,
-    [runId, id],
-  );
+  const rows = await sql`
+    SELECT id, status, started_at, completed_at, duration_ms, result, error, logs
+    FROM cron_runs WHERE id = ${runId} AND cron_job_id = ${id}
+  `;
 
-  if (result.rows.length === 0) {
+  if (rows.length === 0) {
     return c.json({ error: "Run not found" }, 404);
   }
 
-  const row = result.rows[0];
+  const row = rows[0];
   return c.json({
-    id: row.id,
-    cronJobId: id,
-    status: row.status,
-    startedAt: row.started_at,
-    completedAt: row.completed_at,
-    duration: row.duration_ms,
-    result: row.result,
-    error: row.error,
-    logs: row.logs,
+    id: row.id, cronJobId: id, status: row.status,
+    startedAt: row.started_at, completedAt: row.completed_at,
+    duration: row.duration_ms, result: row.result, error: row.error, logs: row.logs,
   });
 });

@@ -5,7 +5,7 @@
 import { Hono, Context } from "hono";
 import { nanoid } from "nanoid";
 import { createHmac, randomBytes } from "crypto";
-import { getPool } from "../lib/db.js";
+import { sql } from "../lib/db.js";
 import { authenticateApiKey, DbContext } from "../lib/auth.js";
 import { getWebhookQueue } from "../lib/queues.js";
 
@@ -52,24 +52,17 @@ webhookRoutes.use("*", async (c, next) => {
  */
 webhookRoutes.get("/", async (c) => {
   const { dbId } = c.get("dbContext");
-  const pool = getPool();
 
-  const result = await pool.query(
-    `SELECT id, url, events, collections, enabled, description, created_at, updated_at
-     FROM webhooks WHERE database_id = $1 ORDER BY created_at DESC`,
-    [dbId],
-  );
+  const rows = await sql`
+    SELECT id, url, events, collections, enabled, description, created_at, updated_at
+    FROM webhooks WHERE database_id = ${dbId} ORDER BY created_at DESC
+  `;
 
   return c.json(
-    result.rows.map((row: any) => ({
-      id: row.id,
-      url: row.url,
-      events: row.events,
-      collections: row.collections,
-      enabled: row.enabled,
-      description: row.description,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
+    rows.map((row: any) => ({
+      id: row.id, url: row.url, events: row.events, collections: row.collections,
+      enabled: row.enabled, description: row.description,
+      createdAt: row.created_at, updatedAt: row.updated_at,
     })),
   );
 });
@@ -105,27 +98,14 @@ webhookRoutes.post("/", async (c) => {
     return c.json({ error: "Invalid URL" }, 400);
   }
 
-  const pool = getPool();
   const id = nanoid();
   const secret = generateWebhookSecret();
   const now = new Date().toISOString();
 
-  await pool.query(
-    `INSERT INTO webhooks (id, database_id, url, events, collections, secret, enabled, description, headers, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)`,
-    [
-      id,
-      dbId,
-      url,
-      events,
-      collections || null,
-      secret,
-      enabled,
-      description || null,
-      JSON.stringify(headers),
-      now,
-    ],
-  );
+  await sql`
+    INSERT INTO webhooks (id, database_id, url, events, collections, secret, enabled, description, headers, created_at, updated_at)
+    VALUES (${id}, ${dbId}, ${url}, ${events}, ${collections || null}, ${secret}, ${enabled}, ${description || null}, ${JSON.stringify(headers)}::jsonb, ${now}, ${now})
+  `;
 
   return c.json(
     {
@@ -150,30 +130,22 @@ webhookRoutes.post("/", async (c) => {
 webhookRoutes.get("/:id", async (c) => {
   const { dbId } = c.get("dbContext");
   const id = c.req.param("id");
-  const pool = getPool();
 
-  const result = await pool.query(
-    `SELECT id, url, events, collections, secret, enabled, description, headers, created_at, updated_at
-     FROM webhooks WHERE id = $1 AND database_id = $2`,
-    [id, dbId],
-  );
+  const rows = await sql`
+    SELECT id, url, events, collections, secret, enabled, description, headers, created_at, updated_at
+    FROM webhooks WHERE id = ${id} AND database_id = ${dbId}
+  `;
 
-  if (result.rows.length === 0) {
+  if (rows.length === 0) {
     return c.json({ error: "Webhook not found" }, 404);
   }
 
-  const webhook = result.rows[0];
+  const webhook = rows[0];
   return c.json({
-    id: webhook.id,
-    url: webhook.url,
-    events: webhook.events,
-    collections: webhook.collections || "*",
-    secret: webhook.secret,
-    enabled: webhook.enabled,
-    description: webhook.description,
-    headers: webhook.headers,
-    createdAt: webhook.created_at,
-    updatedAt: webhook.updated_at,
+    id: webhook.id, url: webhook.url, events: webhook.events,
+    collections: webhook.collections || "*", secret: webhook.secret,
+    enabled: webhook.enabled, description: webhook.description,
+    headers: webhook.headers, createdAt: webhook.created_at, updatedAt: webhook.updated_at,
   });
 });
 
@@ -186,8 +158,6 @@ webhookRoutes.patch("/:id", async (c) => {
   const id = c.req.param("id");
   const body = await c.req.json();
   const { url, events, collections, enabled, description, headers } = body;
-
-  const pool = getPool();
 
   // Build dynamic update query
   const updates: string[] = [];
@@ -231,27 +201,22 @@ webhookRoutes.patch("/:id", async (c) => {
   updates.push(`updated_at = NOW()`);
   values.push(id, dbId);
 
-  const result = await pool.query(
+  const rows = await sql.unsafe(
     `UPDATE webhooks SET ${updates.join(", ")}
      WHERE id = $${paramIndex++} AND database_id = $${paramIndex}
      RETURNING id, url, events, collections, enabled, description, created_at, updated_at`,
     values,
   );
 
-  if (result.rows.length === 0) {
+  if (rows.length === 0) {
     return c.json({ error: "Webhook not found" }, 404);
   }
 
-  const webhook = result.rows[0];
+  const webhook = rows[0];
   return c.json({
-    id: webhook.id,
-    url: webhook.url,
-    events: webhook.events,
-    collections: webhook.collections || "*",
-    enabled: webhook.enabled,
-    description: webhook.description,
-    createdAt: webhook.created_at,
-    updatedAt: webhook.updated_at,
+    id: webhook.id, url: webhook.url, events: webhook.events,
+    collections: webhook.collections || "*", enabled: webhook.enabled,
+    description: webhook.description, createdAt: webhook.created_at, updatedAt: webhook.updated_at,
   });
 });
 
@@ -262,14 +227,10 @@ webhookRoutes.patch("/:id", async (c) => {
 webhookRoutes.delete("/:id", async (c) => {
   const { dbId } = c.get("dbContext");
   const id = c.req.param("id");
-  const pool = getPool();
 
-  const result = await pool.query(
-    "DELETE FROM webhooks WHERE id = $1 AND database_id = $2 RETURNING id",
-    [id, dbId],
-  );
+  const rows = await sql`DELETE FROM webhooks WHERE id = ${id} AND database_id = ${dbId} RETURNING id`;
 
-  if (result.rows.length === 0) {
+  if (rows.length === 0) {
     return c.json({ error: "Webhook not found" }, 404);
   }
 
@@ -283,17 +244,15 @@ webhookRoutes.delete("/:id", async (c) => {
 webhookRoutes.post("/:id/rotate-secret", async (c) => {
   const { dbId } = c.get("dbContext");
   const id = c.req.param("id");
-  const pool = getPool();
 
   const newSecret = generateWebhookSecret();
 
-  const result = await pool.query(
-    `UPDATE webhooks SET secret = $1, updated_at = NOW()
-     WHERE id = $2 AND database_id = $3 RETURNING id`,
-    [newSecret, id, dbId],
-  );
+  const rows = await sql`
+    UPDATE webhooks SET secret = ${newSecret}, updated_at = NOW()
+    WHERE id = ${id} AND database_id = ${dbId} RETURNING id
+  `;
 
-  if (result.rows.length === 0) {
+  if (rows.length === 0) {
     return c.json({ error: "Webhook not found" }, 404);
   }
 
@@ -309,38 +268,24 @@ webhookRoutes.get("/:id/deliveries", async (c) => {
   const id = c.req.param("id");
   const limit = parseInt(c.req.query("limit") || "20", 10);
   const offset = parseInt(c.req.query("offset") || "0", 10);
-  const pool = getPool();
 
-  // Verify webhook belongs to this database
-  const webhookCheck = await pool.query(
-    "SELECT id FROM webhooks WHERE id = $1 AND database_id = $2",
-    [id, dbId],
-  );
-
-  if (webhookCheck.rows.length === 0) {
+  const webhookCheck = await sql`SELECT id FROM webhooks WHERE id = ${id} AND database_id = ${dbId}`;
+  if (webhookCheck.length === 0) {
     return c.json({ error: "Webhook not found" }, 404);
   }
 
-  const result = await pool.query(
-    `SELECT id, event, payload, status, status_code, response, attempts, next_retry_at, created_at, completed_at
-     FROM webhook_deliveries WHERE webhook_id = $1
-     ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
-    [id, limit, offset],
-  );
+  const rows = await sql`
+    SELECT id, event, payload, status, status_code, response, attempts, next_retry_at, created_at, completed_at
+    FROM webhook_deliveries WHERE webhook_id = ${id}
+    ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}
+  `;
 
   return c.json(
-    result.rows.map((row: any) => ({
-      id: row.id,
-      webhookId: id,
-      event: row.event,
-      payload: row.payload,
-      status: row.status,
-      statusCode: row.status_code,
-      response: row.response,
-      attempts: row.attempts,
-      nextRetryAt: row.next_retry_at,
-      createdAt: row.created_at,
-      completedAt: row.completed_at,
+    rows.map((row: any) => ({
+      id: row.id, webhookId: id, event: row.event, payload: row.payload,
+      status: row.status, statusCode: row.status_code, response: row.response,
+      attempts: row.attempts, nextRetryAt: row.next_retry_at,
+      createdAt: row.created_at, completedAt: row.completed_at,
     })),
   );
 });
@@ -353,30 +298,19 @@ webhookRoutes.post("/:id/deliveries/:deliveryId/retry", async (c) => {
   const { dbId } = c.get("dbContext");
   const id = c.req.param("id");
   const deliveryId = c.req.param("deliveryId");
-  const pool = getPool();
 
-  // Verify webhook belongs to this database
-  const webhookResult = await pool.query(
-    "SELECT id, url, secret, headers FROM webhooks WHERE id = $1 AND database_id = $2",
-    [id, dbId],
-  );
-
-  if (webhookResult.rows.length === 0) {
+  const webhookRows = await sql`SELECT id, url, secret, headers FROM webhooks WHERE id = ${id} AND database_id = ${dbId}`;
+  if (webhookRows.length === 0) {
     return c.json({ error: "Webhook not found" }, 404);
   }
 
-  // Get delivery
-  const deliveryResult = await pool.query(
-    "SELECT id, payload FROM webhook_deliveries WHERE id = $1 AND webhook_id = $2",
-    [deliveryId, id],
-  );
-
-  if (deliveryResult.rows.length === 0) {
+  const deliveryRows = await sql`SELECT id, payload FROM webhook_deliveries WHERE id = ${deliveryId} AND webhook_id = ${id}`;
+  if (deliveryRows.length === 0) {
     return c.json({ error: "Delivery not found" }, 404);
   }
 
-  const webhook = webhookResult.rows[0];
-  const delivery = deliveryResult.rows[0];
+  const webhook = webhookRows[0];
+  const delivery = deliveryRows[0];
 
   // Queue for retry via BullMQ
   const webhookQueue = getWebhookQueue();
@@ -398,11 +332,7 @@ webhookRoutes.post("/:id/deliveries/:deliveryId/retry", async (c) => {
     },
   );
 
-  // Update delivery status
-  await pool.query(
-    "UPDATE webhook_deliveries SET status = 'pending', attempts = attempts + 1 WHERE id = $1",
-    [deliveryId],
-  );
+  await sql`UPDATE webhook_deliveries SET status = 'pending', attempts = attempts + 1 WHERE id = ${deliveryId}`;
 
   return c.json({ status: "queued" });
 });
@@ -414,18 +344,13 @@ webhookRoutes.post("/:id/deliveries/:deliveryId/retry", async (c) => {
 webhookRoutes.post("/:id/test", async (c) => {
   const { dbId } = c.get("dbContext");
   const id = c.req.param("id");
-  const pool = getPool();
 
-  const result = await pool.query(
-    "SELECT id, url, secret, headers FROM webhooks WHERE id = $1 AND database_id = $2",
-    [id, dbId],
-  );
-
-  if (result.rows.length === 0) {
+  const rows = await sql`SELECT id, url, secret, headers FROM webhooks WHERE id = ${id} AND database_id = ${dbId}`;
+  if (rows.length === 0) {
     return c.json({ error: "Webhook not found" }, 404);
   }
 
-  const webhook = result.rows[0];
+  const webhook = rows[0];
 
   // Create test payload
   const testPayload = {
@@ -460,21 +385,10 @@ webhookRoutes.post("/:id/test", async (c) => {
     const deliveryId = nanoid();
     const now = new Date().toISOString();
 
-    await pool.query(
-      `INSERT INTO webhook_deliveries (id, webhook_id, event, payload, status, status_code, response, attempts, created_at, completed_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $9)`,
-      [
-        deliveryId,
-        id,
-        "test",
-        testPayload,
-        response.ok ? "success" : "failed",
-        response.status,
-        responseText.substring(0, 1000),
-        1,
-        now,
-      ],
-    );
+    await sql`
+      INSERT INTO webhook_deliveries (id, webhook_id, event, payload, status, status_code, response, attempts, created_at, completed_at)
+      VALUES (${deliveryId}, ${id}, ${'test'}, ${JSON.stringify(testPayload)}::jsonb, ${response.ok ? 'success' : 'failed'}, ${response.status}, ${responseText.substring(0, 1000)}, ${1}, ${now}, ${now})
+    `;
 
     return c.json({
       id: deliveryId,
@@ -493,11 +407,10 @@ webhookRoutes.post("/:id/test", async (c) => {
     const deliveryId = nanoid();
     const now = new Date().toISOString();
 
-    await pool.query(
-      `INSERT INTO webhook_deliveries (id, webhook_id, event, payload, status, response, attempts, created_at, completed_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8)`,
-      [deliveryId, id, "test", testPayload, "failed", errorMessage, 1, now],
-    );
+    await sql`
+      INSERT INTO webhook_deliveries (id, webhook_id, event, payload, status, response, attempts, created_at, completed_at)
+      VALUES (${deliveryId}, ${id}, ${'test'}, ${JSON.stringify(testPayload)}::jsonb, ${'failed'}, ${errorMessage}, ${1}, ${now}, ${now})
+    `;
 
     return c.json({
       id: deliveryId,
