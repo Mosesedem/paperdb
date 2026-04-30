@@ -10,90 +10,106 @@ const StoragePage = () => {
     <DocsContainer>
       <DocsHeading level={1}>Storage</DocsHeading>
       <DocsText>
-        PaperDB exposes file metadata and upload flows through the API. The
-        production object-storage backend is still being finalized, so this page
-        shows the contract that the current API supports today.
+        PaperDB's storage module allows you to securely upload, manage, and distribute files using the SDK.
       </DocsText>
 
       <DocsHeading level={2} className="mt-8">
         Uploading Files
       </DocsHeading>
       <DocsText>
-        You can upload a file using standard{" "}
-        <DocsHighlight>multipart/form-data</DocsHighlight> requests.
+        You can upload a file (e.g., from an input element) directly using the SDK.
       </DocsText>
+      <DocsCodeBlock language="typescript">{`const fileInput = document.getElementById('file-input');
+const file = fileInput.files[0];
 
-      <DocsCodeBlock
-        language="bash"
-        code={`curl -X POST https://api.paperdb.dev/storage/upload \\
-  -H "X-API-Key: your_api_key" \\
-  -F "file=@/path/to/image.png" \\
-  -F "folder=avatars" \\
-  -F "isPublic=true"`}
-      />
+const result = await db.storage.upload(file, {
+  folder: "avatars",
+  isPublic: true,
+  metadata: { userId: "user_123" }
+});
+
+console.log("File uploaded to:", result.url);`}</DocsCodeBlock>
+
+      <DocsHeading level={2} className="mt-8">
+        Upload Multiple Files
+      </DocsHeading>
+      <DocsCodeBlock language="typescript">{`const files = [file1, file2, file3];
+
+const results = await db.storage.uploadMany(files, {
+  folder: "gallery",
+  isPublic: true
+});`}</DocsCodeBlock>
 
       <DocsHeading level={2} className="mt-8">
         Upload From URL
       </DocsHeading>
       <DocsText>
-        You can also ask the API to fetch a file from a remote URL and store it
-        under a folder.
+        You can fetch a remote file and store it directly in PaperDB.
       </DocsText>
-
-      <DocsCodeBlock
-        language="bash"
-        code={`curl -X POST https://api.paperdb.dev/storage/upload-url \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your_api_key" \
-  -d '{"url":"https://example.com/image.png","folder":"imports"}'`}
-      />
+      <DocsCodeBlock language="typescript">{`const file = await db.storage.uploadFromUrl(
+  "https://example.com/sample-image.png",
+  { folder: "imports" }
+);`}</DocsCodeBlock>
 
       <DocsHeading level={2} className="mt-8">
-        File Metadata
+        Managing Files
       </DocsHeading>
       <DocsText>
-        When you upload a file, PaperDB stores the metadata record alongside the
-        rest of the platform data. The exact CDN or object URL depends on the
-        storage backend you deploy.
+        The SDK provides straightforward methods to list, retrieve, and delete files.
       </DocsText>
 
-      <DocsCodeBlock
-        language="json"
-        code={`{
-  "id": "file_123456789",
-  "name": "a1b2c3d4-image.png",
-  "originalName": "image.png",
-  "mimeType": "image/png",
-  "size": 1048576,
-  "url": "https://storage.example.com/avatars/a1b2c3d4-image.png",
-  "cdnUrl": "https://cdn.example.com/avatars/a1b2c3d4-image.png",
-  "path": "avatars/a1b2c3d4-image.png",
-  "isPublic": true,
-  "createdAt": "2024-01-01T00:00:00.000Z"
-}`}
-      />
+      <DocsHeading level={3} className="mt-4">List Files</DocsHeading>
+      <DocsCodeBlock language="typescript">{`const { files, total, hasMore } = await db.storage.list({
+  folder: "avatars",
+  limit: 10,
+  sortBy: "createdAt",
+  sortOrder: "desc"
+});`}</DocsCodeBlock>
+
+      <DocsHeading level={3} className="mt-4">Get File Metadata</DocsHeading>
+      <DocsCodeBlock language="typescript">{`// By ID
+const file = await db.storage.get("file_123");
+
+// By Path
+const fileByPath = await db.storage.getByPath("avatars/image.png");`}</DocsCodeBlock>
+
+      <DocsHeading level={3} className="mt-4">Delete Files</DocsHeading>
+      <DocsCodeBlock language="typescript">{`// Delete single file
+await db.storage.delete("file_123");
+
+// Delete multiple files
+await db.storage.deleteMany(["file_123", "file_456"]);`}</DocsCodeBlock>
 
       <DocsHeading level={2} className="mt-8">
-        Listing Files
+        Signed URLs and Transformations
       </DocsHeading>
       <DocsText>
-        You can retrieve a paginated list of your uploaded files using the
-        storage endpoints.
+        If your file is private, you can generate a temporary signed URL for access.
       </DocsText>
+      <DocsCodeBlock language="typescript">{`const { url, expiresAt } = await db.storage.getSignedUrl("file_123", {
+  expiresIn: 3600 // 1 hour
+});`}</DocsCodeBlock>
 
-      <DocsCodeBlock
-        language="bash"
-        code={`curl -X GET "https://api.paperdb.dev/storage?folder=avatars&limit=10" \
-  -H "X-API-Key: your_api_key"`}
-      />
+      <DocsText className="mt-4">
+        You can also generate URLs with image transformations applied (resize, quality, format):
+      </DocsText>
+      <DocsCodeBlock language="typescript">{`const transformedUrl = db.storage.getImageUrl(fileIdOrUrl, {
+  width: 400,
+  height: 400,
+  fit: "cover",
+  format: "webp"
+});`}</DocsCodeBlock>
 
       <DocsHeading level={2} className="mt-8">
         Folders
       </DocsHeading>
       <DocsText>
-        Folder listing and folder creation are supported. Move, copy, and
-        delete-folder helpers are not part of the public contract yet.
+        You can explicitly create, list, and delete folders.
       </DocsText>
+      <DocsCodeBlock language="typescript">{`await db.storage.createFolder("invoices/2024");
+const folders = await db.storage.listFolders("invoices");
+await db.storage.deleteFolder("invoices/old");`}</DocsCodeBlock>
+
     </DocsContainer>
   );
 };

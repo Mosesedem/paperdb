@@ -7,6 +7,7 @@ import { SiGithub } from "react-icons/si";
 import Sidebar from "./components/sidebar";
 import { Menu } from "lucide-react";
 import MobileDrawer from "./components/ui/mobile-drawer";
+import CopyForAI from "./components/ui/copy-for-ai";
 
 export default function RootLayout({
   children,
@@ -39,7 +40,8 @@ export default function RootLayout({
             </Link>
             <p className="text-gray-500">Docs</p>
           </div>
-          <div className="text-sm text-gray-500 flex items-center gap-2">
+          <div className="text-sm text-gray-500 flex items-center gap-4">
+            <CopyForAI />
             <Link
               href="https://github.com/mosesedem/paperdb"
               className="p-1 hover:bg-white/10 rounded-sm transition-colors"

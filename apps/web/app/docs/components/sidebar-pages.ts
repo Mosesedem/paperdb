@@ -23,6 +23,7 @@ export const pages = [
     items: [
       { name: "What is PaperDB?", href: "/docs", icon: Play },
       { name: "How it works", href: "/docs/how-it-works", icon: Box },
+      { name: "CLI Setup", href: "/docs/cli", icon: Box },
     ],
   },
   {

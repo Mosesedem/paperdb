@@ -209,7 +209,7 @@ export default function PricingPage() {
                 key={plan.name}
                 className={`relative rounded-2xl p-8 ${
                   plan.highlighted
-                    ? "bg-linear-to-b from-blue-500/20 to-transparent border-2 border-blue-500/50"
+                    ? "bg-blue-500/10 border-2 border-blue-500/50"
                     : "bg-black/10 border border-gray-200/5"
                 }`}
               >

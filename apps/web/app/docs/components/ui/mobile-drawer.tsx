@@ -76,9 +76,9 @@ export default MobileDrawer;
 
 /**
  * 
- *  <div className="fixed inset-0 -z-10 w-screen h-screen bg-gradient-to-br from-blue-400 via-pink-300 to-yellow-200"></div>
- * <div
-        className={`fixed top-0 left-0 z-50 h-full backdrop-blur-lg transform transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-[200%]"}`}
+ *  <div className="fixed inset-0 -z-10 w-screen h-screen bg-black"></div>
+ *  <RootLayout>
+ *    ...   className={`fixed top-0 left-0 z-50 h-full backdrop-blur-lg transform transition-transform duration-300 ${open ? "translate-x-0" : "-translate-x-[200%]"}`}
         style={{ willChange: "transform" }}
       >
         <button
