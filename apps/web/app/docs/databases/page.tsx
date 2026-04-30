@@ -3,8 +3,6 @@ import DocsContainer from "../components/ui/docs-container";
 import DocsHeading from "../components/ui/docs-heading";
 import DocsText from "../components/ui/docs-text";
 import DocsCodeBlock from "../components/ui/docs-code-block";
-import DocsCallout from "../components/ui/docs-callout";
-import DocsLink from "../components/ui/docs-link";
 import DocsList from "../components/ui/docs-list";
 
 const Databases = () => {

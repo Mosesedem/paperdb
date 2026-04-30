@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { SiGithub } from "react-icons/si";
 import Sidebar from "./components/sidebar";
 import { Menu } from "lucide-react";
@@ -27,7 +28,13 @@ export default function RootLayout({
             </button>
             <MobileDrawer open={drawerOpen} onOpenChange={setDrawerOpen} />
             <Link href="/docs" className="flex items-center gap-2">
-              <img src="/logo.png" className="w-6" alt="PaperDB" />
+              <Image
+                src="/logo.png"
+                className="w-6"
+                alt="PaperDB"
+                width={24}
+                height={24}
+              />
               <p className="font-semibold">PaperDB</p>
             </Link>
             <p className="text-gray-500">Docs</p>

@@ -15,7 +15,7 @@ const Documents = () => {
       </DocsText>
       <DocsText>
         In PaperDB, documents are just structured key-value objects that follow
-        your collection's schema.
+        your collection schema.
       </DocsText>
 
       <DocsHeading level={2}>✍️ Inserting Documents</DocsHeading>

@@ -66,7 +66,7 @@ const Create = () => {
 
       <DocsCallout type="note">
         <DocsText className="mb-0">
-          Bulk inserts are currently <strong>partial-success</strong>, not
+          Bulk inserts are currently <strong>partial success</strong>, not
           all-or-nothing atomic. Valid documents can be inserted while invalid
           ones are returned in <code>errors</code>.
         </DocsText>

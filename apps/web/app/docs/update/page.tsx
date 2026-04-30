@@ -30,7 +30,7 @@ const Update = () => {
 });`}</DocsCodeBlock>
       <DocsText>
         This updates just the <code>name</code> and <code>isAdmin</code> fields
-        of the document with <code>_id: "user_gilfoyle"</code>.
+        of the document with <code>{`_id: "user_gilfoyle"`}</code>.
       </DocsText>
 
       <DocsHeading level={2}>Increment / Decrement</DocsHeading>
@@ -47,7 +47,7 @@ const Update = () => {
       <DocsHeading level={2}>Behavior</DocsHeading>
       <DocsList>
         <li>
-          <strong>Partial update:</strong> You don't need to pass all fields.
+          <strong>Partial update:</strong> You do not need to pass all fields.
         </li>
         <li>
           <strong>Schema validated:</strong> The new fields are still validated

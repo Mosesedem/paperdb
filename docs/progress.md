@@ -120,6 +120,8 @@
 - [x] **4.5** Validate the finished docs set
   - [x] Run formatting checks on all touched markdown and docs TSX files
   - [x] Spot-check cross-links and route references
+  - [x] Fix docs layout scroll behavior and sidebar stickiness
+  - [x] Fix docs lint blockers in CRUD/Realtime/Cron/Webhooks pages (hook order, JSX escaping, stale SDK examples)
 
 ---
 
@@ -142,6 +144,8 @@
 | 13  | 2026-04-29 | Health check did not probe DB/Redis                                  | Resolved | Enhanced with `SELECT 1` + `PING`                                        |
 | 14  | 2026-04-29 | No OpenAPI spec                                                      | Resolved | Full OAS 3.1 at `/openapi.json`                                          |
 | 15  | 2026-04-29 | No integration tests                                                 | Resolved | Vitest suite covering all 10 PRD paths                                   |
+| 16  | 2026-04-30 | `next lint` crashed from Next/ESLint config version skew             | Resolved | Aligned `apps/web` `eslint-config-next` to `15.3.8`                      |
+| 17  | 2026-04-30 | Docs pages had broken/incorrect examples and lint issues             | Resolved | Updated docs UI + CRUD/realtime/cron/webhooks pages to match V1 contract |
 
 ---
 
@@ -155,4 +159,4 @@
 | Phase 3 — GA Readiness           | Day 60 | ✅ Complete | 90% (deploy validation is manual) |
 | Phase 4 — Documentation Refresh  | Day 61 | Complete    | 100%                              |
 
-_Last updated: 2026-04-30T00:00:00+01:00_
+_Last updated: 2026-04-30T23:59:00+01:00_

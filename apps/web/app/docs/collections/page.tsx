@@ -62,7 +62,7 @@ const Collections = () => {
         <li>Unique fields are checked on insert</li>
       </DocsList>
       <DocsText>
-        You don't need to write validation logic — it's all automatic.
+        You do not need to write validation logic. It is automatic.
       </DocsText>
 
       <DocsCallout type="info">

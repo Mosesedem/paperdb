@@ -31,7 +31,8 @@ const DocsContainer = ({
   children: React.ReactNode;
   currentPath?: string;
 }) => {
-  const pathname = currentPath ?? usePathname();
+  const routePathname = usePathname();
+  const pathname = currentPath ?? routePathname;
   const { prev, next } = getPrevNext(pathname);
   const pageTitle = getCurrentPageTitle(pathname);
 

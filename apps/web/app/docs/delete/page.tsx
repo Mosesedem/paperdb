@@ -26,15 +26,15 @@ const Delete = () => {
       </DocsHeading>
       <DocsCodeBlock>{`await db.users.delete("user_jianyang");`}</DocsCodeBlock>
       <DocsText>
-        This deletes the document with <code>_id: "user_jianyang"</code> from
-        the <code>users</code> collection.
+        This deletes the document with <code>{`_id: "user_jianyang"`}</code>{" "}
+        from the <code>users</code> collection.
       </DocsText>
 
       <DocsHeading level={2}>Behavior</DocsHeading>
       <DocsList>
-        <li>If the document exists, it's gone — permanently.</li>
+        <li>If the document exists, it is deleted permanently.</li>
         <li>
-          If it doesn't exist, it throws a <code>404</code> error.
+          If it does not exist, it throws a <code>404</code> error.
         </li>
       </DocsList>
       <DocsCodeBlock>{`// Typical success response shape

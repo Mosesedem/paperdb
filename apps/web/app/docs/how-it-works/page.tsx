@@ -17,7 +17,7 @@ const HowItWorks = () => {
         Store JSON documents under collections, with optional schema enforcement
         — and wrap it all with a fully type-safe SDK.
       </DocsQuote>
-      <DocsText>Here's what actually happens under the hood:</DocsText>
+      <DocsText>This is what actually happens under the hood:</DocsText>
 
       <DocsHeading level={2}>1. You define your schema</DocsHeading>
       <DocsText className="mb-2">In your SDK config:</DocsText>
@@ -66,7 +66,7 @@ const db = createClient({
       </DocsList>
 
       <DocsHeading level={2}>3. You query like this</DocsHeading>
-      <DocsCodeBlock>{`const admins = await db.users.findMany({
+      <DocsCodeBlock>{`const admins = await db.users.find({
   filter: { isAdmin: true },
   sort: "-createdAt",
   limit: 10,
