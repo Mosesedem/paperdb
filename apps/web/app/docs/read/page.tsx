@@ -14,6 +14,12 @@ const Read = () => {
         You can read data using <code>find()</code> to fetch multiple documents,
         and <code>get()</code> to fetch a single document by ID.
       </DocsText>
+      <DocsCallout type="info">
+        <DocsText className="mb-0">
+          <code>find()</code> maps to <code>GET /:collection/docs</code> and
+          <code>get()</code> maps to <code>GET /:collection/docs/:id</code>.
+        </DocsText>
+      </DocsCallout>
 
       <DocsHeading level={2}>
         🔹 <code>find()</code>
@@ -25,6 +31,16 @@ const Read = () => {
   filter: { isAdmin: true },
   sort: "-createdAt",
   limit: 10,
+});`}</DocsCodeBlock>
+      <DocsText>
+        Advanced operators are supported for numeric/date-like fields:
+      </DocsText>
+      <DocsCodeBlock>{`const latest = await db.users.find({
+  filter: {
+    loginCount: { gte: 10 },
+  },
+  sort: "-updatedAt",
+  limit: 20,
 });`}</DocsCodeBlock>
       <DocsHeading level={3}>Options</DocsHeading>
       <DocsTable>
@@ -96,6 +112,12 @@ const Read = () => {
       <DocsCodeBlock>{`const user = await db.users.get("user_abc123", {
   select: { name: true, email: true },
 });`}</DocsCodeBlock>
+      <DocsCallout type="note">
+        <DocsText className="mb-0">
+          Missing document IDs return a 404 from the API and throw an error in
+          the SDK.
+        </DocsText>
+      </DocsCallout>
     </DocsContainer>
   );
 };

@@ -4,6 +4,7 @@ import DocsHeading from "../components/ui/docs-heading";
 import DocsText from "../components/ui/docs-text";
 import DocsCodeBlock from "../components/ui/docs-code-block";
 import DocsList from "../components/ui/docs-list";
+import DocsCallout from "../components/ui/docs-callout";
 
 const Collections = () => {
   return (
@@ -63,6 +64,16 @@ const Collections = () => {
       <DocsText>
         You don't need to write validation logic — it's all automatic.
       </DocsText>
+
+      <DocsCallout type="info">
+        <DocsText className="mb-0">
+          <strong>Server-backed behavior:</strong> Collections and schema
+          validation are enforced by the API. CRUD endpoints are available for
+          collections (see the API reference). The server implements unique
+          checks, schema validation, and automatic indexing hints for filtered
+          queries.
+        </DocsText>
+      </DocsCallout>
 
       <DocsHeading level={2}>🔗 One Schema per Collection</DocsHeading>
       <DocsText>

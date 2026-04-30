@@ -9,8 +9,8 @@ const Sidebar = () => {
   const pathname = usePathname();
 
   return (
-    <div className="w-64 fixed top-20 h-full hidden md:block">
-      <div className="space-y-4 w-full">
+    <div className="sticky top-22 h-[calc(100dvh-96px)] overflow-y-auto py-4 pr-2">
+      <div className="space-y-4 w-full pb-8">
         {pages.map((page) => (
           <div key={page.group} className="w-full">
             <h3 className="text-xs font-medium text-gray-400 uppercase mb-2">
@@ -21,7 +21,7 @@ const Sidebar = () => {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`${pathname === item.href ? "bg-white text-black" : "hover:bg-white/5"} w-full h-10 rounded-2xl flex items-center px-3 font-medium text-sm gap-x-2`}
+                  className={`${pathname === item.href ? "bg-white text-black" : "hover:bg-white/5"} w-full min-h-10 rounded-2xl flex items-center px-3 py-2 font-medium text-sm gap-x-2 transition-colors`}
                 >
                   <item.icon size={14} />
                   {item.name}

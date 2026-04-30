@@ -42,9 +42,9 @@ const DocsContainer = ({
   }, [pageTitle]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 w-full lg:ml-80">
+    <div className="mx-auto w-full max-w-4xl px-1 py-8 md:px-0">
       {children}
-      <div className="flex justify-between mt-12">
+      <div className="mt-12 flex flex-wrap items-center justify-between gap-4 border-t border-white/10 pt-6">
         {prev ? (
           <DocsLink href={prev.href}>&larr; {prev.name}</DocsLink>
         ) : (

@@ -4,6 +4,7 @@ import DocsHeading from "../components/ui/docs-heading";
 import DocsText from "../components/ui/docs-text";
 import DocsCodeBlock from "../components/ui/docs-code-block";
 import DocsList from "../components/ui/docs-list";
+import DocsCallout from "../components/ui/docs-callout";
 
 const Create = () => {
   return (
@@ -17,7 +18,15 @@ const Create = () => {
       <DocsHeading level={2}>
         🔹 <code>insert()</code>
       </DocsHeading>
-      <DocsText>Adds a single document.</DocsText>
+      <DocsText>Adds a single document to one collection.</DocsText>
+      <DocsCallout type="info">
+        <DocsText className="mb-0">
+          Maps to <code>POST /:collection/docs</code> on the API. The server
+          validates the payload against your collection schema and enforces
+          uniqueness constraints. On success the API returns the created
+          document with `_id`, `createdAt`, and `updatedAt`.
+        </DocsText>
+      </DocsCallout>
       <DocsCodeBlock>{`await db.users.insert({
   name: "Dinesh Chugtai",
   email: "dinesh@piedpiper.com",
@@ -36,6 +45,13 @@ const Create = () => {
         🔸 <code>insertBulk()</code>
       </DocsHeading>
       <DocsText>Inserts multiple documents at once.</DocsText>
+      <DocsCallout type="info">
+        <DocsText className="mb-0">
+          Maps to <code>POST /:collection/bulk</code>. The response returns
+          per-batch status fields: <code>inserted</code>, <code>failed</code>,
+          <code>documents</code>, and optional <code>errors</code>.
+        </DocsText>
+      </DocsCallout>
       <DocsCodeBlock>{`await db.users.insertBulk([
   { name: "Jared Dunn", email: "jared@piedpiper.com", isAdmin: false },
   { name: "Erlich Bachman", email: "erlich@piedpiper.com", isAdmin: true },
@@ -47,6 +63,14 @@ const Create = () => {
         </li>
         <li>Same rules apply: default values, validation, etc.</li>
       </DocsList>
+
+      <DocsCallout type="note">
+        <DocsText className="mb-0">
+          Bulk inserts are currently <strong>partial-success</strong>, not
+          all-or-nothing atomic. Valid documents can be inserted while invalid
+          ones are returned in <code>errors</code>.
+        </DocsText>
+      </DocsCallout>
 
       <DocsHeading level={2}>✅ Key Management</DocsHeading>
       <DocsText>

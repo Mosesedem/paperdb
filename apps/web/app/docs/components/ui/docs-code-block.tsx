@@ -19,17 +19,21 @@ const DocsCodeBlock = ({
 }: DocsCodeBlockProps) => {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(children);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
+    try {
+      await navigator.clipboard.writeText(children);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1200);
+    } catch {
+      setCopied(false);
+    }
   };
   return (
-    <div className="relative border rounded-2xl my-4">
+    <div className="relative my-4 overflow-x-auto rounded-2xl border border-white/10 bg-black/30">
       <Button
         size="sm"
         variant="ghost"
         onClick={handleCopy}
-        className="absolute top-2 right-2 z-10 px-2 py-1 text-xs"
+        className="absolute right-2 top-2 z-10 px-2 py-1 text-xs"
         aria-label="Copy code"
       >
         {copied ? "Copied!" : "Copy"}
@@ -41,8 +45,11 @@ const DocsCodeBlock = ({
           background: "none",
           fontSize: "0.875rem",
           color: "#f8f8f2",
+          margin: 0,
+          paddingTop: "2.5rem",
           ...styleOverride,
         }}
+        showLineNumbers={false}
         wrapLines={true}
       >
         {children}
