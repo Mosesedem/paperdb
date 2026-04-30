@@ -1,6 +1,7 @@
 # PaperDB V1 — Progress Tracker
 
 **Started:** 2026-04-29
+**Updated:** 2026-04-30
 **Plan:** [`implementation_plan.md`](./implementation_plan.md)
 **Legend:** `[ ]` not started · `[/]` in progress · `[x]` done · `[!]` blocked
 
@@ -100,35 +101,58 @@
 
 ---
 
+## Phase 4 — Documentation Refresh and Contract Truth Pass
+
+- [x] **4.1** Audit current docs against code
+- [x] **4.2** Rewrite root and package READMEs
+  - [x] Root [`README.md`](../README.md)
+  - [x] [`apps/api/README.md`](../apps/api/README.md)
+  - [x] [`packages/sdks/notdb/README.md`](../packages/sdks/notdb/README.md)
+  - [x] [`docs/README.md`](./README.md)
+- [x] **4.3** Clean up strategic docs
+  - [x] [`docs/01_SYSTEM_DOCUMENTATION.md`](./01_SYSTEM_DOCUMENTATION.md)
+  - [x] [`docs/02_GAPS_AND_IMPROVEMENTS.md`](./02_GAPS_AND_IMPROVEMENTS.md)
+  - [x] [`docs/implementation_plan.md`](./implementation_plan.md)
+  - [x] [`PRODUCTION_READINESS.md`](../PRODUCTION_READINESS.md)
+- [x] **4.4** Refresh web docs landing page
+  - [x] [`apps/web/app/docs/page.tsx`](../apps/web/app/docs/page.tsx)
+  - [x] [`apps/web/app/docs/storage/page.tsx`](../apps/web/app/docs/storage/page.tsx)
+- [x] **4.5** Validate the finished docs set
+  - [x] Run formatting checks on all touched markdown and docs TSX files
+  - [x] Spot-check cross-links and route references
+
+---
+
 ## Issues Log
 
-| # | Date | Issue | Status | Resolution |
-|---|---|---|---|---|
-| 1 | 2026-04-29 | `apps/api-v2` imports non-existent route files — cannot run | Resolved | Deleted directory |
-| 2 | 2026-04-29 | Health check reports wrong version `"2.0.0"` | Resolved | Fixed to `"1.0.0"` |
-| 3 | 2026-04-29 | CORS open to all origins | Resolved | Restricted to `CORS_ORIGINS` env |
-| 4 | 2026-04-29 | JWT_SECRET has insecure string fallback | Resolved | Throws on missing secret |
-| 5 | 2026-04-29 | Dual DB clients (`sql` + `getPool`) — inconsistent | Resolved | All routes unified on postgres.js `sql` |
-| 6 | 2026-04-29 | No base migration file (`001_initial.sql`) | Resolved | File + runner created, script wired |
-| 7 | 2026-04-29 | Realtime channel names mismatch (short vs full) | Resolved | `normalizeChannelName()` in realtime service |
-| 8 | 2026-04-29 | `lib/auth.ts` still called `getPool()` and used wrong schema columns | Resolved | Rewrote to use `sql`, correct `key_hash`/`database_id`/`revoked` columns |
-| 9 | 2026-04-29 | No write-endpoint request validation | Resolved | Zod schemas on all write endpoints |
-| 10 | 2026-04-29 | No rate limiting | Resolved | Redis sliding-window per-key + per-IP |
-| 11 | 2026-04-29 | No OAuth social login routes | Resolved | Google + GitHub OAuth via code-exchange |
-| 12 | 2026-04-29 | No structured logging | Resolved | X-Request-ID + JSON log middleware |
-| 13 | 2026-04-29 | Health check did not probe DB/Redis | Resolved | Enhanced with `SELECT 1` + `PING` |
-| 14 | 2026-04-29 | No OpenAPI spec | Resolved | Full OAS 3.1 at `/openapi.json` |
-| 15 | 2026-04-29 | No integration tests | Resolved | Vitest suite covering all 10 PRD paths |
+| #   | Date       | Issue                                                                | Status   | Resolution                                                               |
+| --- | ---------- | -------------------------------------------------------------------- | -------- | ------------------------------------------------------------------------ |
+| 1   | 2026-04-29 | `apps/api-v2` imports non-existent route files — cannot run          | Resolved | Deleted directory                                                        |
+| 2   | 2026-04-29 | Health check reports wrong version `"2.0.0"`                         | Resolved | Fixed to `"1.0.0"`                                                       |
+| 3   | 2026-04-29 | CORS open to all origins                                             | Resolved | Restricted to `CORS_ORIGINS` env                                         |
+| 4   | 2026-04-29 | JWT_SECRET has insecure string fallback                              | Resolved | Throws on missing secret                                                 |
+| 5   | 2026-04-29 | Dual DB clients (`sql` + `getPool`) — inconsistent                   | Resolved | All routes unified on postgres.js `sql`                                  |
+| 6   | 2026-04-29 | No base migration file (`001_initial.sql`)                           | Resolved | File + runner created, script wired                                      |
+| 7   | 2026-04-29 | Realtime channel names mismatch (short vs full)                      | Resolved | `normalizeChannelName()` in realtime service                             |
+| 8   | 2026-04-29 | `lib/auth.ts` still called `getPool()` and used wrong schema columns | Resolved | Rewrote to use `sql`, correct `key_hash`/`database_id`/`revoked` columns |
+| 9   | 2026-04-29 | No write-endpoint request validation                                 | Resolved | Zod schemas on all write endpoints                                       |
+| 10  | 2026-04-29 | No rate limiting                                                     | Resolved | Redis sliding-window per-key + per-IP                                    |
+| 11  | 2026-04-29 | No OAuth social login routes                                         | Resolved | Google + GitHub OAuth via code-exchange                                  |
+| 12  | 2026-04-29 | No structured logging                                                | Resolved | X-Request-ID + JSON log middleware                                       |
+| 13  | 2026-04-29 | Health check did not probe DB/Redis                                  | Resolved | Enhanced with `SELECT 1` + `PING`                                        |
+| 14  | 2026-04-29 | No OpenAPI spec                                                      | Resolved | Full OAS 3.1 at `/openapi.json`                                          |
+| 15  | 2026-04-29 | No integration tests                                                 | Resolved | Vitest suite covering all 10 PRD paths                                   |
 
 ---
 
 ## Milestone Summary
 
-| Milestone | Target | Status | % |
-|---|---|---|---|
-| Phase 0 — Eliminate api-v2 | Day 3 | ✅ Complete | 100% |
-| Phase 1 — Contract Stabilization | Day 14 | ✅ Complete | 100% |
-| Phase 2 — Production Safety | Day 35 | ✅ Complete | 95% (S3 deferred to deployment) |
-| Phase 3 — GA Readiness | Day 60 | ✅ Complete | 90% (deploy validation is manual) |
+| Milestone                        | Target | Status      | %                                 |
+| -------------------------------- | ------ | ----------- | --------------------------------- |
+| Phase 0 — Eliminate api-v2       | Day 3  | ✅ Complete | 100%                              |
+| Phase 1 — Contract Stabilization | Day 14 | ✅ Complete | 100%                              |
+| Phase 2 — Production Safety      | Day 35 | ✅ Complete | 95% (S3 deferred to deployment)   |
+| Phase 3 — GA Readiness           | Day 60 | ✅ Complete | 90% (deploy validation is manual) |
+| Phase 4 — Documentation Refresh  | Day 61 | Complete    | 100%                              |
 
-*Last updated: 2026-04-29T18:30:00+01:00*
+_Last updated: 2026-04-30T00:00:00+01:00_

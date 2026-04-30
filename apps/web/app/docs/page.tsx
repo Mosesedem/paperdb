@@ -1,4 +1,5 @@
 import React from "react";
+import DocsContainer from "./components/ui/docs-container";
 import DocsHeading from "./components/ui/docs-heading";
 import DocsText from "./components/ui/docs-text";
 import DocsCard from "./components/ui/docs-card";
@@ -6,21 +7,20 @@ import DocsLink from "./components/ui/docs-link";
 import DocsList from "./components/ui/docs-list";
 import DocsQuote from "./components/ui/docs-quote";
 import DocsHighlight from "./components/ui/docs-highlight";
-import DocsContainer from "./components/ui/docs-container";
 
 const sections = [
   {
     group: "Getting Started",
     items: [
-      { name: "What is PaperDB?", href: "/docs" },
       { name: "How it works", href: "/docs/how-it-works" },
+      { name: "Installation", href: "/docs/installation" },
     ],
   },
   {
     group: "SDK",
     items: [
-      { name: "Installation", href: "/docs/installation" },
       { name: "Authentication", href: "/docs/authentication" },
+      { name: "API Reference", href: "/docs/api-reference" },
     ],
   },
   {
@@ -32,7 +32,7 @@ const sections = [
     ],
   },
   {
-    group: "Database Functions",
+    group: "Database Operations",
     items: [
       { name: "Create", href: "/docs/create" },
       { name: "Read", href: "/docs/read" },
@@ -42,7 +42,7 @@ const sections = [
     ],
   },
   {
-    group: "Advanced Features",
+    group: "Platform Features",
     items: [
       { name: "Webhooks", href: "/docs/webhooks" },
       { name: "Realtime", href: "/docs/realtime" },
@@ -50,69 +50,85 @@ const sections = [
       { name: "Storage", href: "/docs/storage" },
     ],
   },
-  {
-    group: "Reference",
-    items: [
-      { name: "REST API Reference", href: "/docs/api-reference" },
-    ],
-  },
+];
+
+const statusItems = [
+  "Auth, CRUD, bulk/count, schema, webhooks, cron, realtime, and dashboard APIs are documented and working.",
+  "Storage is available for metadata and upload flows; object storage integration is still the gating item for full parity.",
+  "Search, magic-link auth, password reset, and offline sync should be treated as future work until the backend contract lands.",
 ];
 
 const Docs = () => {
   return (
     <DocsContainer>
-      <DocsHeading level={1}>What is PaperDB?</DocsHeading>
-      <DocsText>
-        PaperDB is a schema-based document database built for developers who
-        want structure without the bloat. <br /> <br /> Unlike traditional
-        databases that require complex migrations, query languages, or rigid
-        schemas, PaperDB offers a simpler way: define your data model once, and
-        it handles validation, constraints, and storage behind the scenes.{" "}
-        <br /> <br />
-        It stores data as JSON documents under collections, with optional schema
-        validation for each one. Every document automatically includes metadata
-        like <DocsHighlight>_id</DocsHighlight>,{" "}
-        <DocsHighlight>createdAt</DocsHighlight>, and{" "}
-        <DocsHighlight>updatedAt</DocsHighlight>. <br /> <br />{" "}
-        <b>
-          Think of it like Firestore, but with full TypeScript type safety and
-          better DX.
-        </b>
-      </DocsText>
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <DocsText className="uppercase tracking-[0.2em] text-xs text-gray-500">
+            PaperDB docs
+          </DocsText>
+          <DocsHeading level={1}>
+            Build against the verified V1 contract.
+          </DocsHeading>
+          <DocsText>
+            PaperDB is a schema-guided backend platform for teams that want a
+            modern control plane without inventing one from scratch. The docs in
+            this section describe the routes, SDK methods, and operational
+            expectations that are actually available today.
+          </DocsText>
+        </div>
 
-      <DocsHeading level={2} className="mt-8">
-        Why it exists
-      </DocsHeading>
+        <DocsCard className="border-gray-700/60 bg-white/5">
+          <DocsHeading level={2}>Current platform shape</DocsHeading>
+          <DocsList>
+            {statusItems.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </DocsList>
+          <DocsQuote>
+            The safest way to use PaperDB is to treat the OpenAPI document and
+            the SDK README as the current truth, then use this landing page as
+            the map.
+          </DocsQuote>
+        </DocsCard>
 
-      <DocsText>
-        Databases can become unnecessarily complicated for projects. <br />{" "}
-        You're either:
-      </DocsText>
+        <div className="grid gap-4 md:grid-cols-2">
+          {sections.map((section) => (
+            <DocsCard key={section.group} className="h-full">
+              <DocsHeading level={3}>{section.group}</DocsHeading>
+              <div className="mt-4 flex flex-col gap-3">
+                {section.items.map((item) => (
+                  <DocsLink
+                    key={item.href}
+                    href={item.href}
+                    className="text-base"
+                  >
+                    {item.name}
+                  </DocsLink>
+                ))}
+              </div>
+            </DocsCard>
+          ))}
+        </div>
 
-      <DocsList>
-        <li>fighting with SQL schemas and migration tools, or</li>
-        <li>writing spaghetti validation code in NoSQL environments.</li>
-      </DocsList>
-
-      <DocsText>
-        PaperDB was built because developers deserve something lightweight but
-        structured. A tool that feels native in TypeScript. One that doesn’t ask
-        you to choose between structure and flexibility.
-      </DocsText>
-
-      <DocsQuote>
-        You define your schema in TS, and everything just works — type-safe SDK,
-        server validation, and simple APIs.
-      </DocsQuote>
-
-      <DocsText>It's for:</DocsText>
-
-      <DocsList>
-        <li>MVPs and side projects</li>
-        <li>Event logs, audit trails, feedback systems</li>
-        <li>Internal dashboards</li>
-        <li>Anyone tired of fighting with “real” databases for small apps</li>
-      </DocsList>
+        <DocsCard>
+          <DocsHeading level={2}>Recommended reading order</DocsHeading>
+          <DocsList>
+            <li>
+              Start with <DocsHighlight>How it works</DocsHighlight> to learn
+              the service layout.
+            </li>
+            <li>
+              Move to <DocsHighlight>Installation</DocsHighlight> and
+              <DocsHighlight>Authentication</DocsHighlight> for the first
+              working client flow.
+            </li>
+            <li>
+              Use the operation pages for CRUD, storage, webhooks, cron, and
+              realtime once you are wiring an app.
+            </li>
+          </DocsList>
+        </DocsCard>
+      </div>
     </DocsContainer>
   );
 };

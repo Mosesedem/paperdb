@@ -1,6 +1,8 @@
-# PaperDB SDK (JS/TS)
+# PaperDB SDK
 
-Frontend-friendly SDK with auth, CRUD, storage, webhooks, cron, search, realtime, and offline sync.
+The core JavaScript and TypeScript SDK for PaperDB.
+
+The SDK is strong for the platform paths that already exist in the API: auth, CRUD, storage metadata, webhooks, cron, and realtime. It also exposes search and sync helpers, but those backend capabilities are not fully published yet, so treat them as experimental until the API contract lands.
 
 ## Install
 
@@ -8,7 +10,7 @@ Frontend-friendly SDK with auth, CRUD, storage, webhooks, cron, search, realtime
 pnpm add paperdb
 ```
 
-## Quick start (Node/React/Vite/Next)
+## Quick Start
 
 ```ts
 import { createClient } from "paperdb";
@@ -25,51 +27,42 @@ const db = createClient({
   },
 });
 
-// Auth
 await db.auth.signUp({ email: "hi@example.com", password: "strongpass" });
 await db.auth.signIn({ email: "hi@example.com", password: "strongpass" });
-const me = await db.auth.getUser();
+await db.auth.getUser();
+await db.auth.signOut();
 
-// CRUD
 const user = await db.users.insert({ name: "Mia", email: "mia@example.com" });
-const list = await db.users.find({ filter: { name: "Mia" } });
+await db.users.find({ filter: { name: "Mia" } });
 await db.users.update(user.id, { name: "Mia Harper" });
 await db.users.delete(user.id);
 
-// Storage
 await db.storage.upload({
   file: new File(["hi"], "hello.txt"),
   folder: "docs",
 });
 
-// Webhooks
+await db.storage.uploadFromUrl("https://example.com/photo.png", {
+  folder: "imports",
+});
+
 await db.webhooks.create({
   url: "https://example.com/webhook",
   events: ["users.created"],
 });
 
-// Cron
 await db.cron.create({
   name: "nightly-report",
   schedule: "daily at 2am",
   action: { type: "http", url: "https://example.com/report" },
 });
 
-// Realtime
-const stop = db.realtime.subscribe("users", (event) => console.log(event));
+const stop = db.realtime.subscribe("users", (event) => {
+  console.log(event);
+});
 ```
 
-## CDN (vanilla JS)
-
-```html
-<script src="https://cdn.paperdb.dev/browser.global.js"></script>
-<script>
-  const db = PaperDB.createClient({ apiKey: "PUBLIC_KEY" });
-  db.collection("messages").insert({ text: "Hello" });
-</script>
-```
-
-## React components + hooks
+## React
 
 ```bash
 pnpm add @paperdb/react
@@ -79,7 +72,6 @@ pnpm add @paperdb/react
 import {
   PaperDBProvider,
   SignIn,
-  SignUp,
   UserButton,
   useCollection,
 } from "@paperdb/react";
@@ -89,6 +81,7 @@ const client = createClient({ apiKey: "PUBLIC_KEY" });
 
 function Messages() {
   const { data, insert } = useCollection(client, "messages");
+
   return (
     <div>
       <button onClick={() => insert({ text: "hi" })}>Send</button>
@@ -108,14 +101,23 @@ export function App() {
 }
 ```
 
-## What you get
+## Supported Today
 
-- Auth (email/password + social) with sessions handled for you
-- Schema-driven CRUD with validation, unique, required fields
-- Webhooks with retries + signatures
-- Cron jobs in plain English ("every 5 minutes")
-- Storage with public/private files and signed URLs
-- Realtime subscriptions
-- Search + offline sync (IndexedDB) ready for SPAs
+| Area                                    | Ready   | Notes                                                           |
+| --------------------------------------- | ------- | --------------------------------------------------------------- |
+| Auth                                    | Yes     | Email/password, sessions, profile, password change              |
+| CRUD                                    | Yes     | Schema-driven document methods                                  |
+| Webhooks                                | Yes     | Create, list, update, delete, deliveries                        |
+| Cron                                    | Yes     | Create, list, trigger, history                                  |
+| Storage                                 | Yes     | Upload, upload-many, upload-from-url, list, get, update, delete |
+| Realtime                                | Yes     | Token generation and websocket subscription                     |
+| Search                                  | Not yet | SDK surface exists, backend routes are not public               |
+| Sync                                    | Not yet | Module exists, contract is still being finalized                |
+| Magic link / reset password             | Not yet | No backend routes to support them                               |
+| Move/copy/delete-folder storage helpers | Not yet | Those helpers are not backed by API routes today                |
 
-For full docs visit https://paperdb.dev/docs.
+## Notes for Integrators
+
+- Use a real `baseUrl` if you are not targeting the default production API.
+- Set `realtimeUrl` when your websocket service is hosted separately from the API.
+- Keep your examples aligned with the backend routes in [the API README](../../../apps/api/README.md) and [system docs](../../../docs/01_SYSTEM_DOCUMENTATION.md).

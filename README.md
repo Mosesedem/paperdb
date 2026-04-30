@@ -1,18 +1,49 @@
-# PaperDB – frontend-friendly backend
+# PaperDB
 
-PaperDB gives frontend builders an instant backend with auth, CRUD, storage, webhooks, cron, search, and realtime. No deep backend knowledge needed.
+PaperDB is a frontend-first backend platform for auth, document CRUD, storage metadata, webhooks, cron, realtime, and a dashboard/docs control plane.
 
-## One-minute setup
+The current V1 is production-oriented for the core platform paths: auth, CRUD, bulk/count, webhooks, cron, realtime, rate limiting, structured logging, and OpenAPI. Search, magic-link auth, password reset, and advanced storage operations are not backed end-to-end yet and should be treated as future work.
+
+## Status Snapshot
+
+| Area                        | Status  | Notes                                                                          |
+| --------------------------- | ------- | ------------------------------------------------------------------------------ |
+| Auth                        | Ready   | Email/password and OAuth routes are implemented                                |
+| CRUD                        | Ready   | Document create/read/update/delete, bulk, count, schema                        |
+| Webhooks                    | Ready   | CRUD, retries, deliveries, testing                                             |
+| Cron                        | Ready   | Human-readable schedules and run history                                       |
+| Realtime                    | Ready   | Token generation and websocket fanout                                          |
+| Storage                     | Partial | File metadata and uploads work; real object storage integration is still gated |
+| Search                      | Planned | SDK surface exists, backend routes are not public yet                          |
+| Magic link / reset password | Planned | Not backed by API routes                                                       |
+| Offline sync                | Planned | SDK module exists, but not a supported platform promise yet                    |
+
+## Quick Start
 
 ```bash
-npx create-paperdb@latest
+pnpm install
 ```
 
-Pick your framework (React/Vue/Svelte/Vanilla), choose auth providers, and we scaffold everything.
+Copy the environment examples into place and fill in your local values. The API expects at least `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `CORS_ORIGINS`, and the realtime worker expects `SOCKET_SECRET`.
 
-## Use the SDK
+If you want the entire workspace running locally:
 
-Install (Node, React, Vite, Next, etc.):
+```bash
+pnpm dev
+```
+
+If you want the services individually:
+
+```bash
+pnpm --filter @paperdb/api migrate
+pnpm --filter @paperdb/api dev
+pnpm --filter @paperdb/web dev
+pnpm --filter @paperdb/cron-worker dev
+```
+
+## SDK Usage
+
+Install the core client:
 
 ```bash
 pnpm add paperdb
@@ -33,53 +64,37 @@ const db = createClient({
   },
 });
 
-// Auth (Clerk-like)
 await db.auth.signUp({ email: "hi@example.com", password: "strongpass" });
 await db.auth.signIn({ email: "hi@example.com", password: "strongpass" });
-const me = await db.auth.getUser();
+await db.auth.getUser();
 
-// CRUD
 const user = await db.users.insert({ name: "Mia", email: "mia@example.com" });
-const list = await db.users.find({ filter: { name: "Mia" } });
+await db.users.find({ filter: { name: "Mia" } });
 await db.users.update(user.id, { name: "Mia Harper" });
 await db.users.delete(user.id);
 
-// Storage
-const file = await db.storage.upload({
+await db.storage.upload({
   file: new File(["hi"], "hello.txt"),
   folder: "docs",
 });
 
-// Webhooks
-const hook = await db.webhooks.create({
+await db.webhooks.create({
   url: "https://example.com/webhook",
   events: ["users.created"],
 });
 
-// Cron
-const job = await db.cron.create({
+await db.cron.create({
   name: "nightly-report",
   schedule: "daily at 2am",
   action: { type: "http", url: "https://example.com/report" },
 });
 
-// Realtime
 const stop = db.realtime.subscribe("users", (event) => {
   console.log("change in users", event);
 });
 ```
 
-## Use in the browser (CDN)
-
-```html
-<script src="https://cdn.paperdb.dev/browser.global.js"></script>
-<script>
-  const db = PaperDB.createClient({ apiKey: "PUBLIC_KEY" });
-  db.collection("messages").insert({ text: "Hello" });
-</script>
-```
-
-## React components and hooks
+## React
 
 ```bash
 pnpm add paperdb @paperdb/react
@@ -89,7 +104,6 @@ pnpm add paperdb @paperdb/react
 import {
   PaperDBProvider,
   SignIn,
-  SignUp,
   UserButton,
   useCollection,
 } from "@paperdb/react";
@@ -99,6 +113,7 @@ const client = createClient({ apiKey: "PUBLIC_KEY" });
 
 function Messages() {
   const { data, insert } = useCollection(client, "messages");
+
   return (
     <div>
       <button onClick={() => insert({ text: "hi" })}>Send</button>
@@ -118,33 +133,21 @@ export default function App() {
 }
 ```
 
-## Key features (plain English)
+## Documentation Map
 
-- Auth that feels like Clerk/Auth.js (email+password, socials, sessions)
-- CRUD with schemas (unique/required fields, validation)
-- Webhooks with retries and signatures
-- Cron jobs with human words ("every 5 minutes", "daily at 9am")
-- Storage with public/private files and signed URLs
-- Realtime subscriptions
-- Search and offline sync (IndexedDB) ready for SPAs
+- [Project documentation index](docs/README.md)
+- [System documentation](docs/01_SYSTEM_DOCUMENTATION.md)
+- [Gaps and improvements](docs/02_GAPS_AND_IMPROVEMENTS.md)
+- [Implementation plan](docs/implementation_plan.md)
+- [Production readiness](PRODUCTION_READINESS.md)
 
-## Run locally
+## Repository Layout
 
-```bash
-pnpm install
-pnpm --filter @paperdb/api dev   # API server
-pnpm --filter @paperdb/web dev   # Dashboard/docs
-pnpm --filter @paperdb/cron-worker dev  # Cron + webhook worker
-```
-
-Set env vars: `DATABASE_URL`, `REDIS_URL`, `PORT` (see apps/api/.env.example if present).
-
-## Repo layout
-
-- apps/api – Hono API
-- apps/cron – BullMQ worker for cron + webhooks
-- apps/web – Next.js dashboard/docs
-- packages/sdks/notdb – Core SDK (paperdb)
-- packages/sdks/notdb-react – React hooks/components
+- `apps/api` - Hono API server
+- `apps/cron` - BullMQ worker for cron and webhooks
+- `apps/realtime` - websocket fanout service
+- `apps/web` - dashboard and docs site
+- `packages/sdks/notdb` - core SDK (`paperdb`)
+- `packages/sdks/notdb-react` - React bindings
 
 MIT License
