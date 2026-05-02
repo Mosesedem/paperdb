@@ -82,9 +82,39 @@ export class AuthClient {
         } catch {
           this.clearSession();
         }
+      } else {
+        await this.loadSessionFromNextAuth();
       }
     }
     this.updateState({ isLoading: false });
+  }
+
+  private async loadSessionFromNextAuth() {
+    try {
+      const response = await fetch("/api/auth/session");
+      if (!response.ok) return;
+
+      const session = (await response.json()) as {
+        user?: { sessionToken?: string };
+      };
+
+      if (session?.user?.sessionToken) {
+        this.sessionToken = session.user.sessionToken;
+      }
+    } catch {
+      // no-op: NextAuth session may not exist for this app
+    }
+  }
+
+  setSessionToken(token: string) {
+    this.sessionToken = token;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("paperdb_session_token", token);
+    }
+  }
+
+  getSessionToken(): string | null {
+    return this.sessionToken;
   }
 
   private updateState(partial: Partial<AuthState>) {

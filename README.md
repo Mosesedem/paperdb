@@ -147,7 +147,7 @@ export default function App() {
 - `apps/cron` - BullMQ worker for cron and webhooks
 - `apps/realtime` - websocket fanout service
 - `apps/web` - dashboard and docs site
-- `packages/sdks/notdb` - core SDK (`paperdb`)
-- `packages/sdks/notdb-react` - React bindings
+- `packages/sdks/paperdb` - core SDK (`paperdb`)
+- `packages/sdks/paperdb-react` - React bindings
 
 MIT License

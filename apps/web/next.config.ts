@@ -18,13 +18,7 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  experimental: {
-    serverComponentsExternalPackages: [
-      "@libsql/client",
-      "libsql",
-      "better-sqlite3",
-    ],
-  },
+  serverExternalPackages: ["@libsql/client", "libsql", "better-sqlite3"],
   webpack: (config, { isServer }) => {
     config.module.rules.push({
       test: /\.md$/,

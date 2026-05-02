@@ -107,7 +107,7 @@
 - [x] **4.2** Rewrite root and package READMEs
   - [x] Root [`README.md`](../README.md)
   - [x] [`apps/api/README.md`](../apps/api/README.md)
-  - [x] [`packages/sdks/notdb/README.md`](../packages/sdks/notdb/README.md)
+  - [x] [`packages/sdks/paperdb/README.md`](../packages/sdks/paperdb/README.md)
   - [x] [`docs/README.md`](./README.md)
 - [x] **4.3** Clean up strategic docs
   - [x] [`docs/01_SYSTEM_DOCUMENTATION.md`](./01_SYSTEM_DOCUMENTATION.md)

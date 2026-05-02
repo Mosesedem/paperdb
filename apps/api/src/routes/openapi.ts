@@ -78,7 +78,11 @@ const spec = {
           id: { type: "string" },
           url: { type: "string", format: "uri" },
           events: { type: "array", items: { type: "string" } },
-          collections: { type: "array", items: { type: "string" }, nullable: true },
+          collections: {
+            type: "array",
+            items: { type: "string" },
+            nullable: true,
+          },
           enabled: { type: "boolean" },
           description: { type: "string", nullable: true },
           createdAt: { type: "string", format: "date-time" },
@@ -249,14 +253,75 @@ const spec = {
         responses: { "200": { description: "Password changed" } },
       },
     },
+    "/auth/forgot-password": {
+      post: {
+        summary: "Request password reset email",
+        operationId: "forgotPassword",
+        tags: ["Auth"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email"],
+                properties: {
+                  email: { type: "string", format: "email" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "If account exists, reset link is queued" },
+        },
+      },
+    },
+    "/auth/reset-password": {
+      post: {
+        summary: "Reset password with a valid token",
+        operationId: "resetPassword",
+        tags: ["Auth"],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["email", "token", "newPassword"],
+                properties: {
+                  email: { type: "string", format: "email" },
+                  token: { type: "string" },
+                  newPassword: { type: "string", minLength: 8 },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Password reset" },
+          "400": { description: "Invalid token or payload" },
+        },
+      },
+    },
     "/auth/oauth/{provider}": {
       get: {
         summary: "Initiate OAuth social login",
         operationId: "oauthRedirect",
         tags: ["Auth"],
         parameters: [
-          { name: "provider", in: "path", required: true, schema: { type: "string", enum: ["google", "github"] } },
-          { name: "apiKey", in: "query", required: true, schema: { type: "string" } },
+          {
+            name: "provider",
+            in: "path",
+            required: true,
+            schema: { type: "string", enum: ["google", "github"] },
+          },
+          {
+            name: "apiKey",
+            in: "query",
+            required: true,
+            schema: { type: "string" },
+          },
           { name: "redirectTo", in: "query", schema: { type: "string" } },
         ],
         responses: { "302": { description: "Redirect to OAuth provider" } },
@@ -270,9 +335,22 @@ const spec = {
         tags: ["Documents"],
         security: [{ ApiKey: [] }],
         parameters: [
-          { name: "collection", in: "path", required: true, schema: { type: "string" } },
-          { name: "limit", in: "query", schema: { type: "integer", default: 50 } },
-          { name: "offset", in: "query", schema: { type: "integer", default: 0 } },
+          {
+            name: "collection",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "limit",
+            in: "query",
+            schema: { type: "integer", default: 50 },
+          },
+          {
+            name: "offset",
+            in: "query",
+            schema: { type: "integer", default: 0 },
+          },
           { name: "sort", in: "query", schema: { type: "string" } },
         ],
         responses: { "200": { description: "Array of documents" } },
@@ -282,25 +360,170 @@ const spec = {
         operationId: "createDoc",
         tags: ["Documents"],
         security: [{ ApiKey: [] }],
-        parameters: [{ name: "collection", in: "path", required: true, schema: { type: "string" } }],
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object" } } } },
+        parameters: [
+          {
+            name: "collection",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { type: "object" } } },
+        },
         responses: { "201": { description: "Document created" } },
       },
     },
     "/{collection}/docs/{id}": {
-      get: { summary: "Get document by ID", operationId: "getDoc", tags: ["Documents"], security: [{ ApiKey: [] }], parameters: [{ name: "collection", in: "path", required: true, schema: { type: "string" } }, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Document" }, "404": { description: "Not found" } } },
-      patch: { summary: "Update document", operationId: "updateDoc", tags: ["Documents"], security: [{ ApiKey: [] }], parameters: [{ name: "collection", in: "path", required: true, schema: { type: "string" } }, { name: "id", in: "path", required: true, schema: { type: "string" } }], requestBody: { required: true, content: { "application/json": { schema: { type: "object" } } } }, responses: { "200": { description: "Updated document" } } },
-      delete: { summary: "Delete document", operationId: "deleteDoc", tags: ["Documents"], security: [{ ApiKey: [] }], parameters: [{ name: "collection", in: "path", required: true, schema: { type: "string" } }, { name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Deleted" } } },
+      get: {
+        summary: "Get document by ID",
+        operationId: "getDoc",
+        tags: ["Documents"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "collection",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          "200": { description: "Document" },
+          "404": { description: "Not found" },
+        },
+      },
+      patch: {
+        summary: "Update document",
+        operationId: "updateDoc",
+        tags: ["Documents"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "collection",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { type: "object" } } },
+        },
+        responses: { "200": { description: "Updated document" } },
+      },
+      delete: {
+        summary: "Delete document",
+        operationId: "deleteDoc",
+        tags: ["Documents"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "collection",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: { "200": { description: "Deleted" } },
+      },
     },
     "/{collection}/bulk": {
-      post: { summary: "Bulk insert documents", operationId: "bulkInsert", tags: ["Documents"], security: [{ ApiKey: [] }], parameters: [{ name: "collection", in: "path", required: true, schema: { type: "string" } }], requestBody: { required: true, content: { "application/json": { schema: { type: "array", items: { type: "object" } } } } }, responses: { "201": { description: "Inserted documents" } } },
+      post: {
+        summary: "Bulk insert documents",
+        operationId: "bulkInsert",
+        tags: ["Documents"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "collection",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { type: "array", items: { type: "object" } },
+            },
+          },
+        },
+        responses: { "201": { description: "Inserted documents" } },
+      },
     },
     "/{collection}/count": {
-      get: { summary: "Count documents", operationId: "countDocs", tags: ["Documents"], security: [{ ApiKey: [] }], parameters: [{ name: "collection", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Count result" } } },
+      get: {
+        summary: "Count documents",
+        operationId: "countDocs",
+        tags: ["Documents"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "collection",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: { "200": { description: "Count result" } },
+      },
     },
     "/{collection}/schema": {
-      get: { summary: "Get collection schema", operationId: "getSchema", tags: ["Schema"], security: [{ ApiKey: [] }], parameters: [{ name: "collection", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Schema definition" } } },
-      post: { summary: "Save collection schema", operationId: "saveSchema", tags: ["Schema"], security: [{ ApiKey: [] }], parameters: [{ name: "collection", in: "path", required: true, schema: { type: "string" } }], requestBody: { required: true, content: { "application/json": { schema: { type: "object" } } } }, responses: { "200": { description: "Schema saved" } } },
+      get: {
+        summary: "Get collection schema",
+        operationId: "getSchema",
+        tags: ["Schema"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "collection",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: { "200": { description: "Schema definition" } },
+      },
+      post: {
+        summary: "Save collection schema",
+        operationId: "saveSchema",
+        tags: ["Schema"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "collection",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { type: "object" } } },
+        },
+        responses: { "200": { description: "Schema saved" } },
+      },
     },
     // ── Realtime ─────────────────────────────────────────────────────────────
     "/realtime/token": {
@@ -328,7 +551,13 @@ const spec = {
     },
     // ── Webhooks ─────────────────────────────────────────────────────────────
     "/webhooks": {
-      get: { summary: "List webhooks", operationId: "listWebhooks", tags: ["Webhooks"], security: [{ ApiKey: [] }], responses: { "200": { description: "Webhook list" } } },
+      get: {
+        summary: "List webhooks",
+        operationId: "listWebhooks",
+        tags: ["Webhooks"],
+        security: [{ ApiKey: [] }],
+        responses: { "200": { description: "Webhook list" } },
+      },
       post: {
         summary: "Create a webhook",
         operationId: "createWebhook",
@@ -356,13 +585,65 @@ const spec = {
       },
     },
     "/webhooks/{id}": {
-      get: { summary: "Get webhook", operationId: "getWebhook", tags: ["Webhooks"], security: [{ ApiKey: [] }], parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Webhook" } } },
-      patch: { summary: "Update webhook", operationId: "updateWebhook", tags: ["Webhooks"], security: [{ ApiKey: [] }], parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], requestBody: { required: true, content: { "application/json": { schema: { type: "object" } } } }, responses: { "200": { description: "Updated" } } },
-      delete: { summary: "Delete webhook", operationId: "deleteWebhook", tags: ["Webhooks"], security: [{ ApiKey: [] }], parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Deleted" } } },
+      get: {
+        summary: "Get webhook",
+        operationId: "getWebhook",
+        tags: ["Webhooks"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: { "200": { description: "Webhook" } },
+      },
+      patch: {
+        summary: "Update webhook",
+        operationId: "updateWebhook",
+        tags: ["Webhooks"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { type: "object" } } },
+        },
+        responses: { "200": { description: "Updated" } },
+      },
+      delete: {
+        summary: "Delete webhook",
+        operationId: "deleteWebhook",
+        tags: ["Webhooks"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: { "200": { description: "Deleted" } },
+      },
     },
     // ── Cron ─────────────────────────────────────────────────────────────────
     "/cron": {
-      get: { summary: "List cron jobs", operationId: "listCronJobs", tags: ["Cron"], security: [{ ApiKey: [] }], responses: { "200": { description: "Cron job list" } } },
+      get: {
+        summary: "List cron jobs",
+        operationId: "listCronJobs",
+        tags: ["Cron"],
+        security: [{ ApiKey: [] }],
+        responses: { "200": { description: "Cron job list" } },
+      },
       post: {
         summary: "Create a cron job",
         operationId: "createCronJob",
@@ -396,21 +677,72 @@ const spec = {
         operationId: "uploadFile",
         tags: ["Storage"],
         security: [{ ApiKey: [] }],
-        requestBody: { required: true, content: { "multipart/form-data": { schema: { type: "object", properties: { file: { type: "string", format: "binary" }, folder: { type: "string" }, isPublic: { type: "boolean" } } } } } },
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                properties: {
+                  file: { type: "string", format: "binary" },
+                  folder: { type: "string" },
+                  isPublic: { type: "boolean" },
+                },
+              },
+            },
+          },
+        },
         responses: { "201": { description: "File uploaded" } },
       },
     },
     "/storage/files": {
-      get: { summary: "List files", operationId: "listFiles", tags: ["Storage"], security: [{ ApiKey: [] }], responses: { "200": { description: "File list" } } },
+      get: {
+        summary: "List files",
+        operationId: "listFiles",
+        tags: ["Storage"],
+        security: [{ ApiKey: [] }],
+        responses: { "200": { description: "File list" } },
+      },
     },
     "/storage/files/{id}": {
-      get: { summary: "Get file", operationId: "getFile", tags: ["Storage"], security: [{ ApiKey: [] }], parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "File metadata" } } },
-      delete: { summary: "Delete file", operationId: "deleteFile", tags: ["Storage"], security: [{ ApiKey: [] }], parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }], responses: { "200": { description: "Deleted" } } },
+      get: {
+        summary: "Get file",
+        operationId: "getFile",
+        tags: ["Storage"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: { "200": { description: "File metadata" } },
+      },
+      delete: {
+        summary: "Delete file",
+        operationId: "deleteFile",
+        tags: ["Storage"],
+        security: [{ ApiKey: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: { "200": { description: "Deleted" } },
+      },
     },
   },
   tags: [
     { name: "System", description: "Health and meta endpoints" },
-    { name: "Auth", description: "End-user authentication and session management" },
+    {
+      name: "Auth",
+      description: "End-user authentication and session management",
+    },
     { name: "Documents", description: "Core document store operations" },
     { name: "Schema", description: "Collection schema management" },
     { name: "Realtime", description: "Realtime subscription token generation" },

@@ -34,8 +34,8 @@ While the API has a Vitest suite, the web dashboard relies solely on Next.js lin
 
 ## 2. What Should Be Removed / Refactored
 
-### 🗑️ The `notdb` Naming Artifacts
-The monorepo has been rebranded to `PaperDB` (and previously `Renboot`/`EdgeRent`), but the SDK packages are still sitting in `packages/sdks/notdb` and `packages/sdks/notdb-react`. 
+### 🗑️ The `paperdb` Naming Artifacts
+The monorepo has been rebranded to `PaperDB` (and previously `Renboot`/`EdgeRent`), but the SDK packages are still sitting in `packages/sdks/paperdb` and `packages/sdks/paperdb-react`. 
 * **Action:** Rename these directories to `packages/sdks/paperdb` and `packages/sdks/paperdb-react`. Update the `pnpm-workspace.yaml` and related imports to reflect the clean name. Leaving legacy names in the folder structure causes confusion for new contributors.
 
 ### 🗑️ Mock Storage Endpoints
@@ -55,4 +55,4 @@ The API correctly uses `postgres.js` (`sql` template literal), but the web dashb
 * **Documentation Standards:** The `PRODUCTION_READINESS.md` and `docs/progress.md` files are excellent. Maintaining a clear matrix of what is actually ready versus what is planned builds immense trust with developers.
 
 ## Summary Verdict
-PaperDB is an **A-tier project structurally**, but it needs a few critical weekend sprints to fix the Next.js Client Boundary issue, implement real S3 storage, and clean up the legacy `notdb` folder names before it can be considered a fully GA (General Availability) product.
+PaperDB is an **A-tier project structurally**, but it needs a few critical weekend sprints to fix the Next.js Client Boundary issue, implement real S3 storage, and clean up the legacy `paperdb` folder names before it can be considered a fully GA (General Availability) product.

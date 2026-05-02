@@ -53,6 +53,10 @@ services:
       DATABASE_URL: postgresql://paperdb:paperdb_secret@postgres:5432/paperdb
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-this-in-production-use-256-bit-key}
+      BREVO_API_KEY: ${BREVO_API_KEY:-}
+      BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL:-noreply@paperdb.dev}
+      BREVO_SENDER_NAME: ${BREVO_SENDER_NAME:-PaperDB}
+      DASHBOARD_URL: ${DASHBOARD_URL:-http://localhost:6565}
       PORT: 3001
       NODE_ENV: production
     depends_on:
@@ -120,7 +124,9 @@ services:
     environment:
       DATABASE_URL: postgresql://paperdb:paperdb_secret@postgres:5432/paperdb
       NEXT_PUBLIC_API_URL: http://api:3001
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-change-this-auth-secret}
+      AUTH_SECRET: ${AUTH_SECRET:-change-this-auth-secret}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NODE_ENV: production
     depends_on:
       - api

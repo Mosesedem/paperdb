@@ -1,7 +1,7 @@
 # PaperDB Project Fix Plan: NextAuth, BREVO, and Branding Consolidation
 
 **Date:** 2026-05-02  
-**Scope:** Replace better-auth with NextAuth v5, implement email/password auth with password reset, integrate BREVO for all emails, consolidate notdb → paperdb naming across the entire project.  
+**Scope:** Replace better-auth with NextAuth v5, implement email/password auth with password reset, integrate BREVO for all emails, consolidate paperdb → paperdb naming across the entire project.  
 **Estimated Timeline:** 3–4 weeks for full execution (can be parallelized)  
 **Risk Level:** Medium (auth changes require careful testing; renaming is low-risk but broad)
 
@@ -11,11 +11,11 @@
 
 PaperDB currently uses better-auth (Polar) for authentication, which is a third-party dependency that adds complexity and limits control over auth flows. The project also has:
 
-- Legacy `notdb` folder/package naming that conflicts with the PaperDB brand.
+- Legacy `paperdb` folder/package naming that conflicts with the PaperDB brand.
 - No dedicated password reset flow on the backend.
 - Email sending scattered across different mechanisms (Polar, manual logic).
 
-This plan consolidates authentication using NextAuth v5 (industry standard), implements a proper password reset flow with BREVO emails, and unifies the brand by renaming all `notdb` references to `paperdb`.
+This plan consolidates authentication using NextAuth v5 (industry standard), implements a proper password reset flow with BREVO emails, and unifies the brand by renaming all `paperdb` references to `paperdb`.
 
 ---
 
@@ -23,15 +23,15 @@ This plan consolidates authentication using NextAuth v5 (industry standard), imp
 
 ### Phase 1.1: Rename SDK Directories and Packages
 
-**Scope:** Consolidate all `notdb` references to `paperdb`.  
+**Scope:** Consolidate all `paperdb` references to `paperdb`.  
 **Timeline:** 4–6 hours (mostly mechanical renaming and import updates).
 
 #### Step 1.1.1: Rename SDK directories
 
 **Actions:**
 
-1. Rename `packages/sdks/notdb/` → `packages/sdks/paperdb/`
-2. Rename `packages/sdks/notdb-react/` → `packages/sdks/paperdb-react/`
+1. Rename `packages/sdks/paperdb/` → `packages/sdks/paperdb/`
+2. Rename `packages/sdks/paperdb-react/` → `packages/sdks/paperdb-react/`
 
 **File edits:**
 
@@ -42,7 +42,7 @@ This plan consolidates authentication using NextAuth v5 (industry standard), imp
   packages:
     - "apps/*"
     - "packages/*"
-    - "packages/sdks/notdb/*"
+    - "packages/sdks/paperdb/*"
 
   # NEW:
   packages:
@@ -85,17 +85,17 @@ This plan consolidates authentication using NextAuth v5 (industry standard), imp
 **Search and replace pattern:**
 
 ```
-notdb → paperdb
-@notdb → @paperdb
-"notdb": → "paperdb":
+paperdb → paperdb
+@paperdb → @paperdb
+"paperdb": → "paperdb":
 ```
 
 #### Step 1.1.3: Update TypeScript references
 
 **Files:**
 
-- `tsconfig.json` (if paths are aliased) — update any `@notdb/*` aliases
-- Check for any `.eslintignore` or `.gitignore` references to `notdb`
+- `tsconfig.json` (if paths are aliased) — update any `@paperdb/*` aliases
+- Check for any `.eslintignore` or `.gitignore` references to `paperdb`
 
 #### Step 1.1.4: Update all internal SDK references
 
@@ -108,11 +108,11 @@ notdb → paperdb
 **Execution:**
 
 ```bash
-# Search for all notdb references
-grep -r "notdb" --include="*.ts" --include="*.tsx" --include="*.json" --include="*.md" .
+# Search for all paperdb references
+grep -r "paperdb" --include="*.ts" --include="*.tsx" --include="*.json" --include="*.md" .
 
 # Then carefully rename each occurrence:
-find . -type f -name "*notdb*" -exec mv {} \`echo {} | sed 's/notdb/paperdb/g'\` \;
+find . -type f -name "*paperdb*" -exec mv {} \`echo {} | sed 's/paperdb/paperdb/g'\` \;
 ```
 
 #### Step 1.1.5: Verify no broken imports
@@ -1332,7 +1332,7 @@ export default function ResetPasswordPage() {
 
 ### Phase 3.4: Update SDK Auth Client
 
-**Scope:** Update notdb/paperdb SDK to use NextAuth tokens instead of better-auth.  
+**Scope:** Update paperdb/paperdb SDK to use NextAuth tokens instead of better-auth.  
 **Timeline:** 1–2 hours.
 
 #### Step 3.4.1: Update auth client
@@ -1588,7 +1588,7 @@ If issues arise:
 
 ## Success Criteria
 
-- [ ] All `notdb` references renamed to `paperdb` across the codebase.
+- [ ] All `paperdb` references renamed to `paperdb` across the codebase.
 - [ ] BREVO API integration working; test emails sending successfully.
 - [ ] NextAuth v5 installed and configured with email/password credentials.
 - [ ] Password reset flow (forgot + reset) working end-to-end.

@@ -25,19 +25,19 @@ This repo is close to "solid V1" if you narrow the public promise and finish a s
 
 1. SDK/API contract mismatch is the biggest structural problem.
 
-- `packages/sdks/notdb/src/storage.ts` exposes `move`, `copy`, `deleteFolder`, and `getByPath`.
+- `packages/sdks/paperdb/src/storage.ts` exposes `move`, `copy`, `deleteFolder`, and `getByPath`.
 - `apps/api/src/routes/storage.ts` does not expose matching routes for those operations.
 - Result: SDK methods can 404 despite appearing first-class.
 
 2. Search is exported as a usable SDK feature without backend route contract.
 
-- `packages/sdks/notdb/src/search.ts` and `packages/sdks/notdb/src/index.ts` expose full search client features.
+- `packages/sdks/paperdb/src/search.ts` and `packages/sdks/paperdb/src/index.ts` expose full search client features.
 - `apps/api/src/index.ts` does not mount search routes.
 - Result: product promise outruns implementation.
 
 3. Offline sync is exposed as productized SDK functionality without server contract.
 
-- `packages/sdks/notdb/src/sync.ts` contains substantial offline sync logic.
+- `packages/sdks/paperdb/src/sync.ts` contains substantial offline sync logic.
 - There is no corresponding sync backend route surface in API.
 - Result: users may assume supported behavior that is not guaranteed.
 
@@ -176,7 +176,7 @@ This repo is close to "solid V1" if you narrow the public promise and finish a s
 
 #### Step 1a: Remove unsupported storage methods from SDK
 
-**File:** `packages/sdks/notdb/src/storage.ts`
+**File:** `packages/sdks/paperdb/src/storage.ts`
 
 Remove these four methods entirely (lines ~198–327):
 
@@ -189,7 +189,7 @@ Remove these four methods entirely (lines ~198–327):
 
 #### Step 1b: Remove SearchClient and SyncClient from public SDK exports
 
-**File:** `packages/sdks/notdb/src/index.ts`
+**File:** `packages/sdks/paperdb/src/index.ts`
 
 Change lines 47 and 55:
 
@@ -218,7 +218,7 @@ export type {
 
 #### Step 1c: Remove SearchClient and SyncClient from client initialization
 
-**File:** `packages/sdks/notdb/src/client.ts`
+**File:** `packages/sdks/paperdb/src/client.ts`
 
 Find and remove the search + sync initialization (around lines 179–212):
 
@@ -621,9 +621,9 @@ While the API has a Vitest suite, the web dashboard relies solely on Next.js lin
 
 ## 2. What Should Be Removed / Refactored
 
-### 🗑️ The `notdb` Naming Artifacts
+### 🗑️ The `paperdb` Naming Artifacts
 
-The monorepo has been rebranded to `PaperDB` (and previously `Renboot`/`EdgeRent`), but the SDK packages are still sitting in `packages/sdks/notdb` and `packages/sdks/notdb-react`.
+The monorepo has been rebranded to `PaperDB` (and previously `Renboot`/`EdgeRent`), but the SDK packages are still sitting in `packages/sdks/paperdb` and `packages/sdks/paperdb-react`.
 
 - **Action:** Rename these directories to `packages/sdks/paperdb` and `packages/sdks/paperdb-react`. Update the `pnpm-workspace.yaml` and related imports to reflect the clean name. Leaving legacy names in the folder structure causes confusion for new contributors.
 
@@ -648,4 +648,4 @@ The API correctly uses `postgres.js` (`sql` template literal), but the web dashb
 
 ## Summary Verdict
 
-PaperDB is an **A-tier project structurally**, but it needs a few critical weekend sprints to fix the Next.js Client Boundary issue, implement real S3 storage, and clean up the legacy `notdb` folder names before it can be considered a fully GA (General Availability) product.
+PaperDB is an **A-tier project structurally**, but it needs a few critical weekend sprints to fix the Next.js Client Boundary issue, implement real S3 storage, and clean up the legacy `paperdb` folder names before it can be considered a fully GA (General Availability) product.

@@ -35,8 +35,8 @@ The system is intentionally split into a public API, a background worker, a real
 
 ### Packages
 
-- `packages/sdks/notdb` - core JavaScript/TypeScript SDK published as `paperdb`
-- `packages/sdks/notdb-react` - React bindings and UI helpers
+- `packages/sdks/paperdb` - core JavaScript/TypeScript SDK published as `paperdb`
+- `packages/sdks/paperdb-react` - React bindings and UI helpers
 - `packages/cli` - `create-paperdb` scaffolding CLI
 - shared config and UI packages
 

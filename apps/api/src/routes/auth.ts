@@ -8,8 +8,10 @@ import { Hono } from "hono";
 import { nanoid } from "nanoid";
 import { sign, verify } from "jsonwebtoken";
 import { hash, compare } from "bcrypt";
+import { createHash } from "node:crypto";
 import { sql } from "../lib/db.js";
 import { authenticateApiKey } from "../lib/auth.js";
+import { sendPasswordResetEmail } from "../lib/email.js";
 import {
   SignUpSchema,
   SignInSchema,
@@ -86,7 +88,14 @@ authRoutes.post("/sign-up", async (c) => {
 
   return c.json(
     {
-      user: { id: userId, email: email.toLowerCase(), name: name ?? null, role: "user", createdAt: now, updatedAt: now },
+      user: {
+        id: userId,
+        email: email.toLowerCase(),
+        name: name ?? null,
+        role: "user",
+        createdAt: now,
+        updatedAt: now,
+      },
       session: { id: sessionId, userId, expiresAt, token },
     },
     201,
@@ -129,9 +138,14 @@ authRoutes.post("/sign-in", async (c) => {
 
   return c.json({
     user: {
-      id: user.id, email: user.email, name: user.name, avatar: user.avatar,
-      role: user.role, emailVerified: user.email_verified,
-      createdAt: user.created_at, updatedAt: user.updated_at,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+      role: user.role,
+      emailVerified: user.email_verified,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
     },
     session: { id: sessionId, userId: user.id, expiresAt, token },
   });
@@ -159,7 +173,8 @@ authRoutes.get("/me", async (c) => {
   const sessionRows = await sql`
     SELECT id FROM sdk_sessions WHERE token = ${token} AND expires_at > NOW()
   `;
-  if (sessionRows.length === 0) return c.json({ error: "Session expired" }, 401);
+  if (sessionRows.length === 0)
+    return c.json({ error: "Session expired" }, 401);
 
   const userRows = await sql`
     SELECT id, email, name, avatar, role, email_verified, created_at, updated_at
@@ -170,9 +185,14 @@ authRoutes.get("/me", async (c) => {
   const user = userRows[0];
   return c.json({
     user: {
-      id: user.id, email: user.email, name: user.name, avatar: user.avatar,
-      role: user.role, emailVerified: user.email_verified,
-      createdAt: user.created_at, updatedAt: user.updated_at,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+      role: user.role,
+      emailVerified: user.email_verified,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
     },
   });
 });
@@ -193,7 +213,9 @@ authRoutes.get("/session", async (c) => {
   if (rows.length === 0) return c.json({ error: "Session expired" }, 401);
 
   const s = rows[0];
-  return c.json({ session: { id: s.id, userId: s.user_id, expiresAt: s.expires_at, token } });
+  return c.json({
+    session: { id: s.id, userId: s.user_id, expiresAt: s.expires_at, token },
+  });
 });
 
 // ─── Refresh session ──────────────────────────────────────────────────────────
@@ -205,8 +227,10 @@ authRoutes.post("/refresh", async (c) => {
   const decoded = verifySessionToken(token);
   if (!decoded) return c.json({ error: "Invalid session" }, 401);
 
-  const sessionRows = await sql`SELECT id, user_id FROM sdk_sessions WHERE token = ${token}`;
-  if (sessionRows.length === 0) return c.json({ error: "Session not found" }, 401);
+  const sessionRows =
+    await sql`SELECT id, user_id FROM sdk_sessions WHERE token = ${token}`;
+  if (sessionRows.length === 0)
+    return c.json({ error: "Session not found" }, 401);
 
   const oldSession = sessionRows[0];
   const userRows = await sql`
@@ -229,9 +253,14 @@ authRoutes.post("/refresh", async (c) => {
 
   return c.json({
     user: {
-      id: user.id, email: user.email, name: user.name, avatar: user.avatar,
-      role: user.role, emailVerified: user.email_verified,
-      createdAt: user.created_at, updatedAt: user.updated_at,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+      role: user.role,
+      emailVerified: user.email_verified,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
     },
     session: { id: newSessionId, userId: user.id, expiresAt, token: newToken },
   });
@@ -264,9 +293,14 @@ authRoutes.patch("/me", async (c) => {
   const user = userRows[0];
   return c.json({
     user: {
-      id: user.id, email: user.email, name: user.name, avatar: user.avatar,
-      role: user.role, emailVerified: user.email_verified,
-      createdAt: user.created_at, updatedAt: user.updated_at,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar,
+      role: user.role,
+      emailVerified: user.email_verified,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at,
     },
   });
 });
@@ -285,7 +319,8 @@ authRoutes.post("/change-password", async (c) => {
 
   const { currentPassword, newPassword } = data!;
 
-  const userRows = await sql`SELECT password_hash FROM sdk_users WHERE id = ${decoded.userId}`;
+  const userRows =
+    await sql`SELECT password_hash FROM sdk_users WHERE id = ${decoded.userId}`;
   if (userRows.length === 0) return c.json({ error: "User not found" }, 404);
 
   const isValid = await compare(currentPassword, userRows[0].password_hash);
@@ -295,6 +330,116 @@ authRoutes.post("/change-password", async (c) => {
   await sql`UPDATE sdk_users SET password_hash = ${newHash}, updated_at = NOW() WHERE id = ${decoded.userId}`;
 
   return c.json({ success: true });
+});
+
+// ─── Control-plane password reset ───────────────────────────────────────────
+
+authRoutes.post("/forgot-password", async (c) => {
+  let email = "";
+
+  try {
+    const body = await c.req.json();
+    email = String(body?.email ?? "")
+      .trim()
+      .toLowerCase();
+  } catch {
+    return c.json({ error: "Request body must be valid JSON" }, 400);
+  }
+
+  if (!email) {
+    return c.json({ error: "Email is required" }, 400);
+  }
+
+  try {
+    const users = await sql`
+      SELECT id, email FROM users WHERE email = ${email}
+    `;
+
+    if (users.length === 0) {
+      return c.json({ message: "If email exists, reset link sent" }, 200);
+    }
+
+    const user = users[0];
+    const rawToken = nanoid(48);
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const id = nanoid();
+
+    await sql`
+      INSERT INTO password_reset_tokens (id, user_id, token_hash, expires_at, created_at, updated_at)
+      VALUES (${id}, ${user.id}, ${tokenHash}, ${expiresAt}, NOW(), NOW())
+    `;
+
+    const baseUrl = process.env.DASHBOARD_URL || "http://localhost:6565";
+    const resetUrl = `${baseUrl}/auth/reset-password?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(email)}`;
+    await sendPasswordResetEmail(email, resetUrl);
+
+    return c.json({ message: "If email exists, reset link sent" }, 200);
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return c.json({ error: "Failed to process password reset" }, 500);
+  }
+});
+
+authRoutes.post("/reset-password", async (c) => {
+  let email = "";
+  let token = "";
+  let newPassword = "";
+
+  try {
+    const body = await c.req.json();
+    email = String(body?.email ?? "")
+      .trim()
+      .toLowerCase();
+    token = String(body?.token ?? "").trim();
+    newPassword = String(body?.newPassword ?? "");
+  } catch {
+    return c.json({ error: "Request body must be valid JSON" }, 400);
+  }
+
+  if (!email || !token || !newPassword) {
+    return c.json(
+      { error: "Email, token, and new password are required" },
+      400,
+    );
+  }
+
+  if (newPassword.length < 8) {
+    return c.json({ error: "Password must be at least 8 characters" }, 400);
+  }
+
+  try {
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+
+    const rows = await sql`
+      SELECT prt.id, prt.user_id, u.email
+      FROM password_reset_tokens prt
+      JOIN users u ON u.id = prt.user_id
+      WHERE prt.token_hash = ${tokenHash}
+        AND prt.expires_at > NOW()
+        AND prt.used_at IS NULL
+      LIMIT 1
+    `;
+
+    if (rows.length === 0) {
+      return c.json({ error: "Invalid or expired reset token" }, 400);
+    }
+
+    const row = rows[0];
+    if (String(row.email).toLowerCase() !== email) {
+      return c.json({ error: "Email does not match reset token" }, 400);
+    }
+
+    const passwordHash = await hash(newPassword, 12);
+
+    await sql`UPDATE users SET password_hash = ${passwordHash}, updated_at = NOW() WHERE id = ${row.user_id}`;
+    await sql`UPDATE password_reset_tokens SET used_at = NOW(), updated_at = NOW() WHERE id = ${row.id}`;
+
+    return c.json({ message: "Password reset successfully" }, 200);
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return c.json({ error: "Failed to reset password" }, 500);
+  }
 });
 
 // ─── OAuth — Social Login ─────────────────────────────────────────────────────
@@ -344,12 +489,16 @@ authRoutes.get("/oauth/:provider", async (c) => {
   if (!cfg) return c.json({ error: `Unsupported provider: ${provider}` }, 400);
 
   if (!cfg.clientId() || !cfg.clientSecret()) {
-    return c.json({ error: `${provider} OAuth is not configured on this server` }, 501);
+    return c.json(
+      { error: `${provider} OAuth is not configured on this server` },
+      501,
+    );
   }
 
   const apiKey = c.req.query("apiKey");
   const redirectTo = c.req.query("redirectTo") ?? "";
-  if (!apiKey) return c.json({ error: "apiKey query parameter is required" }, 400);
+  if (!apiKey)
+    return c.json({ error: "apiKey query parameter is required" }, 400);
 
   const dbContext = await authenticateApiKey(apiKey);
   if (!dbContext) return c.json({ error: "Invalid API key" }, 401);
@@ -386,7 +535,8 @@ authRoutes.get("/oauth/:provider/callback", async (c) => {
   const oauthError = c.req.query("error");
 
   if (oauthError) return c.json({ error: `OAuth error: ${oauthError}` }, 400);
-  if (!code || !rawState) return c.json({ error: "Missing code or state" }, 400);
+  if (!code || !rawState)
+    return c.json({ error: "Missing code or state" }, 400);
 
   let stateData: { apiKey: string; redirectTo: string; dbId: string };
   try {
@@ -434,17 +584,19 @@ authRoutes.get("/oauth/:provider/callback", async (c) => {
       Accept: "application/json",
     },
   });
-  if (!userRes.ok) return c.json({ error: "Failed to fetch user profile" }, 502);
+  if (!userRes.ok)
+    return c.json({ error: "Failed to fetch user profile" }, 502);
 
   const profile = (await userRes.json()) as any;
-  const email: string | undefined =
-    profile.email ?? profile.emails?.[0]?.value;
+  const email: string | undefined = profile.email ?? profile.emails?.[0]?.value;
   const name: string | undefined = profile.name ?? profile.login;
-  const avatar: string | undefined =
-    profile.picture ?? profile.avatar_url;
+  const avatar: string | undefined = profile.picture ?? profile.avatar_url;
 
   if (!email) {
-    return c.json({ error: "Could not retrieve email from OAuth provider" }, 400);
+    return c.json(
+      { error: "Could not retrieve email from OAuth provider" },
+      400,
+    );
   }
 
   // Upsert SDK user

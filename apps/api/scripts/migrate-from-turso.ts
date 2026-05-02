@@ -35,7 +35,7 @@ async function truncateTables() {
 async function createPostgresTables() {
   console.log("Creating PostgreSQL tables...");
 
-  // Create user table (better-auth)
+  // Create legacy auth user table
   await sql`
     CREATE TABLE IF NOT EXISTS "user" (
       id TEXT NOT NULL PRIMARY KEY,
@@ -48,7 +48,7 @@ async function createPostgresTables() {
     )
   `;
 
-  // Create session table (better-auth)
+  // Create legacy auth session table
   await sql`
     CREATE TABLE IF NOT EXISTS session (
       id TEXT NOT NULL PRIMARY KEY,
@@ -66,7 +66,7 @@ async function createPostgresTables() {
     CREATE INDEX IF NOT EXISTS session_userId_idx ON session ("userId")
   `;
 
-  // Create account table (better-auth)
+  // Create legacy auth account table
   await sql`
     CREATE TABLE IF NOT EXISTS account (
       id TEXT NOT NULL PRIMARY KEY,
@@ -89,7 +89,7 @@ async function createPostgresTables() {
     CREATE INDEX IF NOT EXISTS account_userId_idx ON account ("userId")
   `;
 
-  // Create verification table (better-auth)
+  // Create legacy auth verification table
   await sql`
     CREATE TABLE IF NOT EXISTS verification (
       id TEXT NOT NULL PRIMARY KEY,
@@ -201,7 +201,7 @@ async function createPostgresTables() {
 async function migrateData() {
   console.log("\n📦 Starting data migration...\n");
 
-  // Migrate user table (better-auth)
+  // Migrate legacy auth user table
   console.log("Migrating user...");
   try {
     const { rows } = await turso.execute("SELECT * FROM user");
@@ -230,7 +230,7 @@ async function migrateData() {
     console.log("  ⚠️ user:", (err as Error).message);
   }
 
-  // Migrate session table (better-auth)
+  // Migrate legacy auth session table
   console.log("Migrating session...");
   try {
     const { rows } = await turso.execute("SELECT * FROM session");
@@ -260,7 +260,7 @@ async function migrateData() {
     console.log("  ⚠️ session:", (err as Error).message);
   }
 
-  // Migrate account table (better-auth)
+  // Migrate legacy auth account table
   console.log("Migrating account...");
   try {
     const { rows } = await turso.execute("SELECT * FROM account");
@@ -295,7 +295,7 @@ async function migrateData() {
     console.log("  ⚠️ account:", (err as Error).message);
   }
 
-  // Migrate verification table (better-auth)
+  // Migrate legacy auth verification table
   console.log("Migrating verification...");
   try {
     const { rows } = await turso.execute("SELECT * FROM verification");
